@@ -18,6 +18,7 @@
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="sim" role="tab">Mô phỏng vật lý</button>
     <button class="tab" data-tab="re" role="tab">Dò công thức</button>
+    <button class="tab" data-tab="gunny" role="tab">Mô hình Gunny (V3)</button>
   </nav>
   <div class="api-status" id="apiStatus" title="Trạng thái máy chủ"><span class="dot"></span><span class="txt">đang kết nối…</span></div>
 </header>
@@ -40,6 +41,34 @@
     </div>
 
     <div class="bottom">
+      <!-- ======== Mô hình Gunny V3 ======== -->
+      <div class="card gunny-card wide" id="gExpCard">
+        <div class="card-head">
+          <h3>Dữ liệu bắn thực tế Gunny PC <span class="muted" id="gExpCount"></span></h3>
+          <div class="btn-row">
+            <button class="mini" id="gExpAdd">+ Thêm lần bắn</button>
+            <button class="mini" id="gExpImport">Nhập CSV</button>
+            <button class="mini" id="gExpExport">Xuất CSV</button>
+            <button class="mini danger" id="gExpClear">Xoá tất cả</button>
+          </div>
+        </div>
+        <p class="note warn">Chỉ nhập kết quả bạn tự bắn trong Gunny PC. Khoảng cách và điểm rơi tính bằng <b>khoảng Gunny</b> (đo từ người bắn). Dữ liệu được lưu trên máy chủ (thư mục App_Data) và giữ lại sau khi tắt ứng dụng. Điểm rơi để trống + "Trúng: Có" được hiểu là rơi đúng tại khoảng cách mục tiêu.</p>
+        <div class="table-scroll g-exp-scroll"><table class="data editable" id="gExpTable"></table></div>
+      </div>
+      <div class="card gunny-card wide hidden" id="gOptCard">
+        <div class="card-head"><h3>Kết quả tối ưu / đánh giá mô hình</h3><button class="mini" data-hide="gOptCard">Ẩn</button></div>
+        <div id="gOptResult"></div>
+      </div>
+      <div class="card gunny-card wide hidden" id="gAimCard">
+        <div class="card-head"><h3>Tìm góc và lực</h3><button class="mini" data-hide="gAimCard">Ẩn</button></div>
+        <p class="note warn"><b>Chỉ dự đoán</b> = kết quả tính từ mô hình, chưa kiểm chứng trong game. <b>Đã xác nhận</b> = có lần bắn thực tế gần như cùng góc/lực/gió/khoảng cách đã trúng. Không phương án nào được bảo đảm trúng trong Gunny thật nếu chưa kiểm chứng.</p>
+        <div id="gAimResult"></div>
+      </div>
+      <div class="card gunny-card wide hidden" id="gCmpCard">
+        <div class="card-head"><h3>So sánh đường đạn các mô hình</h3><button class="mini" data-hide="gCmpCard">Ẩn</button></div>
+        <p class="note">Mỗi mô hình đề xuất (góc, lực). Đường trên canvas là quỹ đạo do <b>engine vật lý</b> tính với đúng góc/lực/gió đó (không chỉnh sửa cho khớp). Dấu ◆ là điểm rơi theo <b>chính mô hình</b>. Hai giá trị khác nhau cho thấy mô hình đó và vật lý tham chiếu không đồng nhất.</p>
+        <div class="table-scroll"><table class="data" id="gCmpTable"></table></div>
+      </div>
       <!-- Results of the last committed shot -->
       <div class="card" id="resultsCard">
         <div class="card-head">
@@ -243,6 +272,51 @@
         <div class="opt-result" id="optResult"></div>
       </section>
     </div>
+    <!-- ---------- Mô hình Gunny V3 ---------- -->
+    <div class="tab-page hidden" id="page-gunny">
+      <section class="group">
+        <h4>Quy đổi cự ly (Distance Calibration)</h4>
+        <p class="note warn">Không mặc định 1 đơn vị simulator = 1 khoảng Gunny. <b>Khoảng Gunny = Khoảng cách simulator × Hệ số quy đổi.</b></p>
+        <div class="row"><label for="gCalDiv">Số khoảng / màn hình Gunny</label><input type="number" id="gCalDiv" min="1" max="100" step="1"></div>
+        <div class="row"><label for="gCalWidth">Chiều rộng màn hình tham chiếu (px)</label><input type="number" id="gCalWidth" min="100" max="10000" step="1"></div>
+        <div class="row"><label for="gCalMode">Cách xác định</label>
+          <select id="gCalMode"><option value="ReferenceShot">Neo theo phát tham chiếu</option><option value="Manual">Nhập tay</option></select></div>
+        <div class="row"><label for="gCalSpd">Đơn vị simulator / 1 khoảng</label><input type="number" id="gCalSpd" min="0.0001" step="0.0001"></div>
+        <div class="row"><label>Phát tham chiếu: góc / lực / khoảng</label>
+          <span class="tri"><input type="number" id="gCalRA" min="0" max="90" step="0.5"><input type="number" id="gCalRP" min="1" max="100" step="1"><input type="number" id="gCalRD" min="0.1" max="100" step="0.1"></span></div>
+        <div class="row"><label for="gCalWind" title="Giả định: gió engine = gió Gunny × hệ số này">Hệ số gió (engine / Gunny)</label><input type="number" id="gCalWind" step="0.05"></div>
+        <div class="calib-info" id="gCalInfo"></div>
+        <div class="row"><label for="gConvSim">Thử quy đổi: simulator (u)</label><input type="number" id="gConvSim" value="5.7" step="0.1"></div>
+        <div class="calib-info" id="gConvOut"></div>
+        <button class="btn primary" id="gCalSave">Lưu quy đổi</button>
+      </section>
+
+      <section class="group">
+        <h4>Mô hình tính toán</h4>
+        <div class="row"><label for="gWeapon">Chỉ dùng dữ liệu của vũ khí</label><input type="text" id="gWeapon" placeholder="(tất cả)" class="text-in"></div>
+        <div id="gModels"></div>
+        <button class="btn" id="gModelsSave">Lưu tham số mô hình</button>
+        <button class="btn" id="gSettingsReset">Khôi phục tham số mặc định</button>
+      </section>
+
+      <section class="group">
+        <h4>Tối ưu tham số theo dữ liệu thực nghiệm</h4>
+        <div class="model-checks" id="gOptModels"></div>
+        <button class="btn primary" id="gOptimize">Tối ưu / đánh giá</button>
+      </section>
+
+      <section class="group">
+        <h4>Mục tiêu</h4>
+        <div class="row"><label for="gTarget">Khoảng cách mục tiêu (khoảng Gunny)</label><input type="number" id="gTarget" value="8" min="0.1" max="100" step="0.1"></div>
+        <div class="row"><label for="gWind">Gió</label>
+          <span class="tri"><input type="number" id="gWind" value="0" min="0" max="100" step="0.1"><select id="gWindDir"><option value="1">Thuận</option><option value="-1">Ngược</option></select></span></div>
+        <div class="row"><label for="gMaxPer">Số phương án / mô hình</label><input type="number" id="gMaxPer" value="5" min="1" max="50"></div>
+        <div class="model-checks" id="gAimModels"></div>
+        <button class="btn primary" id="gAim">Tìm góc và lực tối ưu</button>
+        <button class="btn" id="gCompare">So sánh đường đạn trên canvas</button>
+      </section>
+      <p class="note">Nguồn và giả định của từng mô hình: mở mục "Nguồn & giả định" trong từng thẻ mô hình, hoặc xem docs/GUNNY_MODELS.md.</p>
+    </div>
   </aside>
 </main>
 
@@ -273,6 +347,22 @@
       <span class="spacer"></span>
       <button class="btn" value="cancel">Huỷ</button>
       <button class="btn primary" value="ok">Sinh dữ liệu</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="gImportDialog">
+  <form method="dialog" class="dlg">
+    <h3>Nhập dữ liệu bắn thực tế (CSV)</h3>
+    <p class="note">Tiêu đề (thứ tự bất kỳ, có thể viết tiếng Việt): <code>distance,angle,power,wind,windDirection,weapon,actualLanding,hitTarget,notes</code>. windDirection: thuan/nguoc (hoặc gió âm = ngược). hitTarget: yes/no.</p>
+    <textarea id="gImportText" rows="10" placeholder="distance,angle,power,wind,windDirection,weapon,actualLanding,hitTarget,notes"></textarea>
+    <div class="btn-row">
+      <button class="btn" type="button" id="gImportFileBtn">Chọn tệp…</button>
+      <input type="file" id="gImportFile" accept=".csv,text/csv,text/plain" hidden>
+      <label class="check"><input type="checkbox" id="gImportReplace"> Thay thế toàn bộ dữ liệu hiện có</label>
+      <span class="spacer"></span>
+      <button class="btn" value="cancel">Huỷ</button>
+      <button class="btn primary" value="ok">Nhập</button>
     </div>
   </form>
 </dialog>

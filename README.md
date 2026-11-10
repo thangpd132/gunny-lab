@@ -39,7 +39,7 @@ dotnet build
 dotnet test
 ```
 
-Hiện có 52 test (physics engine, các thành phần vật lý, reverse engineering/optimizer, và test tích hợp API).
+Hiện có 80 test (physics engine, các thành phần vật lý, reverse engineering/optimizer, các mô hình Gunny V3, quy đổi cự ly, CSV, và test tích hợp API).
 
 ---
 
@@ -63,6 +63,15 @@ GunnyLab/
 │   │   ├── DragModel.cs                 ← None / Linear / Quadratic
 │   │   ├── Integrators.cs               ← Semi-implicit Euler, Explicit Euler, RK4
 │   │   └── CollisionDetector.cs         ← va chạm liên tục (segment vs ground / AABB)
+│   ├── Gunny/                           ← V3: mô hình Gunny (xem docs/GUNNY_MODELS.md)
+│   │   ├── IProjectileModel.cs, GunnyTypes.cs, GunnyResearchSettings.cs
+│   │   ├── Models/                      ← PhysicsBaseline, GunnySuperHigh, Gunny65Degree, GunnyLowAngle, CustomEmpirical
+│   │   ├── Empirical/                   ← EmpiricalFitter (hồi quy/nội suy/bảng tra, chọn theo LOOCV), FixedAngleEmpirical
+│   │   ├── DistanceCalibrationService.cs← quy đổi simulator ↔ khoảng Gunny
+│   │   ├── ExperimentRepository.cs      ← dữ liệu bắn thực tế (JSON + CSV) và lưu cấu hình
+│   │   ├── ModelOptimizationService.cs  ← tối ưu tham số theo dữ liệu
+│   │   ├── AutoAimService.cs            ← tìm góc/lực, so sánh đường đạn
+│   │   └── GunnyModelRegistry.cs
 │   ├── Services/
 │   │   ├── IPhysicsEngine.cs / PhysicsEngine.cs   ← vòng lặp time-step
 │   │   ├── ShotSetup.cs                 ← "công thức game": Power → V0, góc, gió, điểm bắn
@@ -80,7 +89,7 @@ GunnyLab/
 │           │   ├── PowerController.js   ← tích lực 0–100 %, chốt lực khi thả, kéo tay
 │           │   ├── CanvasRenderer.js    ← hệ toạ độ, camera, nhân vật, bia, thước đo, đạn
 │           │   └── ProjectileSimulator.js← gọi API vật lý, phát lại quỹ đạo theo thời gian thực
-│           └── research/                ← app.js, canvas.js, simulator.js, reverse.js (trang nghiên cứu)
+│           └── research/                ← app.js, canvas.js, simulator.js, reverse.js, gunny.js (trang nghiên cứu)
 └── ProjectileSimulator.Tests/           ← xUnit
 ```
 
@@ -183,6 +192,17 @@ Chi tiết xử lý bàn phím: mọi phím game đều `preventDefault` ở c�
 
 ---
 
+### Trang Nghiên cứu công thức – tab Mô hình Gunny (V3)
+
+Khu vực nghiên cứu cơ chế bắn Gunny PC. Chi tiết công thức, nguồn và giả định: **[docs/GUNNY_MODELS.md](docs/GUNNY_MODELS.md)**.
+
+- **Quy đổi cự ly**: số khoảng/màn hình, chiều rộng màn hình tham chiếu, đơn vị simulator cho 1 khoảng (neo theo phát tham chiếu 81°/lực 100/9 khoảng hoặc nhập tay), hệ số gió. Hiển thị cả khoảng cách simulator và khoảng Gunny. Thước đo gameplay không đổi.
+- **5 mô hình độc lập**: A vật lý tham chiếu · B siêu cao (`Angle = 81 + (9 − D) + 2·Wind`, lực 100) · C góc 65° · D góc thấp 10/20/30° · E thực nghiệm tuỳ chỉnh. C, D, E **không có công thức đặt sẵn**, chỉ học từ dữ liệu bạn nhập và báo "Chưa xác định" khi chưa đủ dữ liệu.
+- **Dữ liệu bắn thực tế**: thêm, sửa trực tiếp trong bảng, xoá, nhập/xuất CSV. Dữ liệu được lưu tại `ProjectileSimulator/App_Data/` và giữ lại sau khi tắt ứng dụng.
+- **Tối ưu / đánh giá**: tham số đề xuất, phương pháp được chọn, MAE, RMSE, LOOCV RMSE, độ lệch từng lần bắn; nút áp dụng cho mô hình A, B.
+- **Tìm góc và lực tối ưu**: các phương án theo |sai số| tăng dần, đánh dấu *Đã xác nhận* (khớp lần bắn thực tế đã trúng) hoặc *Chỉ dự đoán*.
+- **So sánh đường đạn**: mỗi mô hình một màu trên cùng canvas, kèm điểm rơi theo mô hình và theo vật lý.
+
 ## 7. API
 
 Enum gửi/nhận dạng chuỗi (`"RungeKutta4"`, `"Quadratic"`, …). Mọi trường đều có giá trị mặc định, nên chỉ cần gửi các trường muốn thay đổi. Dữ liệu sai trả về `400` (ValidationProblemDetails).
@@ -195,6 +215,19 @@ Enum gửi/nhận dạng chuỗi (`"RungeKutta4"`, `"Quadratic"`, …). Mọi tr
 | GET | `/api/experiments/parameters` | Khoảng tìm kiếm mặc định |
 | POST | `/api/experiments/evaluate` | `{ base, experiments, flightTimeWeight }` → dự đoán + MAE/RMSE |
 | POST | `/api/experiments/optimize` | `{ base, experiments, method, parameters, maxIterations, maxGridEvaluations, flightTimeWeight }` |
+| GET | `/api/gunny/models` | Danh sách mô hình V3: mô tả, nguồn, giả định, tham số, trạng thái |
+| POST | `/api/gunny/predict` | `{ distance, angle, power, signedWind, models? }` → điểm rơi theo từng mô hình |
+| GET/PUT | `/api/gunny/settings` | Quy đổi cự ly + tham số mô hình (`POST /api/gunny/settings/reset` để khôi phục) |
+| POST | `/api/gunny/calibration/convert` | `{ simDistance \| gunnyDistance \| pixels }` → mọi đơn vị |
+| POST | `/api/gunny/calibration/anchor` | Neo quy đổi theo phát tham chiếu |
+| GET/POST | `/api/gunny/experiments` | Liệt kê / thêm lần bắn thực tế |
+| PUT/DELETE | `/api/gunny/experiments/{id}` | Sửa / xoá một lần bắn (`DELETE /api/gunny/experiments` xoá tất cả) |
+| POST | `/api/gunny/experiments/import?replace=` | Body CSV (text/plain) |
+| GET | `/api/gunny/experiments/export` | Tải CSV |
+| POST | `/api/gunny/optimize` | `{ models? }` → kết quả tối ưu/đánh giá từng mô hình |
+| POST | `/api/gunny/optimize/apply` | `{ modelId, parameters }` (mô hình A, B) |
+| POST | `/api/gunny/aim` | `{ targetDistance, signedWind, maxPerModel, models? }` → phương án góc/lực |
+| POST | `/api/gunny/compare` | Như trên → phương án tốt nhất + quỹ đạo vật lý của từng mô hình |
 
 Ví dụ:
 

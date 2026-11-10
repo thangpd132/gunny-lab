@@ -5,6 +5,7 @@
 import { SimCanvas } from './canvas.js';
 import { Api, ShotAnimator, LatestRunner } from './simulator.js';
 import { initReverse } from './reverse.js';
+import { initGunny } from './gunny.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -524,8 +525,9 @@ function handleError(e) {
 
 function switchTab(name) {
   for (const t of $$('.tab')) t.classList.toggle('active', t.dataset.tab === name);
-  $('#page-sim').classList.toggle('hidden', name !== 'sim');
-  $('#page-re').classList.toggle('hidden', name !== 're');
+  for (const p of $$('.tab-page')) p.classList.toggle('hidden', p.id !== 'page-' + name);
+  document.body.classList.toggle('tab-gunny', name === 'gunny');
+  document.dispatchEvent(new CustomEvent('research-tab', { detail: name }));
 }
 
 // ------------------------------------------------------------------ boot
@@ -603,6 +605,14 @@ async function boot() {
     setObservations: (obs) => sim.setScene({ observations: obs }),
     setExtraLayers: (layers) => { extraLayers = layers; refreshTrajectories(); sim.autoFrame(); },
     showEvalCard: (show) => $('#evalCard').classList.toggle('hidden', !show),
+  });
+
+  initGunny({
+    getParams: () => ({ ...params }), toast, handleError, download,
+    setObservations: (obs) => sim.setScene({ observations: obs }),
+    setExtraLayers: (layers) => { extraLayers = layers; refreshTrajectories(); sim.autoFrame(); },
+    setTargetDistance: (d) => sim.setScene({ distance: d }),
+    clearPreview: () => { preview = null; $('#livePreview').checked = false; refreshTrajectories(); },
   });
 
   previewRunner.schedule();
