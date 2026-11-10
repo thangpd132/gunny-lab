@@ -243,7 +243,7 @@ function renderLegend(list) {
     const name = t.label ?? (h ? `#${h.n} θ${fmt(h.request.angle, 0)}° P${fmt(h.request.power, 0)} W${fmt(h.request.wind, 1)}` : '');
     return `<div class="item"><span class="sw ${t.dash ? 'dash' : ''}" style="--c:${t.color}"></span>${escapeHtml(name)}</div>`;
   });
-  if (preview) html.push(`<div class="item"><span class="sw dash" style="--c:#e6f1ff"></span>live preview</div>`);
+  if (preview) html.push(`<div class="item"><span class="sw dash" style="--c:#e6f1ff"></span>xem trước</div>`);
   $('#legend').innerHTML = html.join('');
 }
 
@@ -312,7 +312,7 @@ function onClearTrajectory() {
   renderHistory();
   saveHistory();
   refreshTrajectories();
-  toast('Trajectories cleared (history kept)');
+  toast('Đã xoá đường đạn (giữ lịch sử)');
 }
 
 function onReset() {
@@ -321,12 +321,12 @@ function onReset() {
   applyParams({ ...DEFAULTS });
   $('#livePreview').checked = true;
   sim.resetView();
-  toast('All parameters reset to defaults');
+  toast('Đã đặt lại mọi thông số về mặc định');
 }
 
 /** Run model presets (A–D) on the current parameters and overlay them. */
 export async function runCompare(models) {
-  if (!models.length) { toast('Select at least one model', true); return; }
+  if (!models.length) { toast('Hãy chọn ít nhất một mô hình', true); return; }
   try {
     const res = await Api.compare({ base: buildRequest(), models });
     compareEntries = res.entries.map(e => ({
@@ -356,8 +356,8 @@ function renderCompareTable(entries) {
       <td>${r.steps}</td><td class="l ${r.hitTarget ? 'good' : 'bad'}">${r.collisionStatus}</td>
       <td class="l muted">${escapeHtml(r.activeModels.join(' + '))}</td></tr>`;
   }).join('');
-  $('#compareTable').innerHTML = `<thead><tr><th class="l">Model</th><th>V0</th><th>Flight t</th><th>Max H</th>
-    <th>Landing X</th><th>Range</th><th>Δx vs first</th><th>Steps</th><th class="l">Status</th><th class="l">Active forces</th></tr></thead><tbody>${rows}</tbody>`;
+  $('#compareTable').innerHTML = `<thead><tr><th class="l">Mô hình</th><th>V0</th><th>T bay</th><th>H max</th>
+    <th>X rơi</th><th>Tầm xa</th><th>Δx so với đầu</th><th>Số bước</th><th class="l">Trạng thái</th><th class="l">Lực tác dụng</th></tr></thead><tbody>${rows}</tbody>`;
   $('#compareCard').classList.remove('hidden');
 }
 
@@ -366,27 +366,27 @@ function renderCompareTable(entries) {
 function renderResult(r) {
   const stat = (k, v, unit = '') => `<div class="stat"><div class="k">${k}</div><div class="v">${v}${unit ? ` <span class="muted">${unit}</span>` : ''}</div></div>`;
   $('#stats').innerHTML = [
-    stat('Angle', `${fmt(r.angle, 1)}° → ${fmt(r.effectiveAngle, 1)}°`),
-    stat('Power', fmt(r.power, 1)),
-    stat('Initial speed V0', fmt(r.initialSpeed), 'u/s'),
-    stat('Distance', fmt(r.distance, 2), 'u'),
-    stat('Wind', fmt(r.wind, 1)),
-    stat('Gravity (eff.)', fmt(r.effectiveGravity), 'u/s²'),
-    stat('Flight time', fmt(r.flightTime), 's'),
-    stat('Maximum height', fmt(r.maxHeight), 'u'),
-    stat('Landing X', fmt(r.landingX), 'u'),
-    stat('Landing Y', fmt(r.landingY), 'u'),
-    stat('Horizontal range', fmt(r.horizontalRange), 'u'),
-    stat('Miss distance', (r.missDistance >= 0 ? '+' : '') + fmt(r.missDistance), 'u'),
-    stat('Simulation steps', r.steps.toLocaleString()),
-    stat('Δt / integrator', `${r.deltaTime}s ${r.integrator.replace('SemiImplicitEuler', 'SI-Euler').replace('RungeKutta4', 'RK4').replace('ExplicitEuler', 'Euler')}`),
-    stat('Impact speed', fmt(r.impactSpeed), 'u/s'),
-    stat('Analytic range', r.analyticRange != null ? fmt(r.analyticRange) : 'n/a', r.analyticRange != null ? 'u' : ''),
+    stat('Góc', `${fmt(r.angle, 1)}° → ${fmt(r.effectiveAngle, 1)}°`),
+    stat('Lực', fmt(r.power, 1)),
+    stat('Vận tốc đầu V0', fmt(r.initialSpeed), 'u/s'),
+    stat('Khoảng cách', fmt(r.distance, 2), 'u'),
+    stat('Gió', fmt(r.wind, 1)),
+    stat('Trọng lực (hiệu dụng)', fmt(r.effectiveGravity), 'u/s²'),
+    stat('Thời gian bay', fmt(r.flightTime), 's'),
+    stat('Độ cao cực đại', fmt(r.maxHeight), 'u'),
+    stat('Điểm rơi X', fmt(r.landingX), 'u'),
+    stat('Điểm rơi Y', fmt(r.landingY), 'u'),
+    stat('Tầm xa ngang', fmt(r.horizontalRange), 'u'),
+    stat('Độ lệch mục tiêu', (r.missDistance >= 0 ? '+' : '') + fmt(r.missDistance), 'u'),
+    stat('Số bước mô phỏng', r.steps.toLocaleString()),
+    stat('Δt / tích phân', `${r.deltaTime}s ${r.integrator.replace('SemiImplicitEuler', 'SI-Euler').replace('RungeKutta4', 'RK4').replace('ExplicitEuler', 'Euler')}`),
+    stat('Vận tốc chạm', fmt(r.impactSpeed), 'u/s'),
+    stat('Tầm xa giải tích', r.analyticRange != null ? fmt(r.analyticRange) : 'n/a', r.analyticRange != null ? 'u' : ''),
   ].join('');
   const b = $('#statusBadge');
   b.textContent = r.collisionStatus;
   b.className = 'badge ' + (r.status === 'HitTarget' ? 'hit' : r.status === 'HitGround' ? 'miss' : 'other');
-  $('#modelsLine').textContent = `forces: ${r.activeModels.join(' + ')} · computed in ${fmt(r.computeTimeMs, 2)} ms`;
+  $('#modelsLine').textContent = `lực: ${r.activeModels.join(' + ')} · tính trong ${fmt(r.computeTimeMs, 2)} ms`;
 }
 
 // ------------------------------------------------------------------ history
@@ -394,23 +394,23 @@ function renderResult(r) {
 function renderHistory() {
   $('#historyCount').textContent = history.length ? `(${history.length})` : '';
   if (!history.length) {
-    $('#historyTable').innerHTML = '<tbody><tr><td class="l muted">No shots yet — press Simulate or Fire.</td></tr></tbody>';
+    $('#historyTable').innerHTML = '<tbody><tr><td class="l muted">Chưa có phát bắn nào — bấm Mô phỏng hoặc Bắn.</td></tr></tbody>';
     return;
   }
   const rows = history.slice().reverse().map(h => {
     const r = h.summary, q = h.request;
     return `<tr data-id="${h.id}">
-      <td class="l"><input type="checkbox" class="hist-vis" ${h.visible ? 'checked' : ''} title="Show on canvas"> <span class="sw" style="--c:${h.color}"></span> ${h.n}</td>
+      <td class="l"><input type="checkbox" class="hist-vis" ${h.visible ? 'checked' : ''} title="Hiện trên canvas"> <span class="sw" style="--c:${h.color}"></span> ${h.n}</td>
       <td class="l">${h.source}</td>
       <td>${fmt(q.angle, 1)}</td><td>${fmt(q.power, 1)}</td><td>${fmt(q.distance, 1)}</td><td>${fmt(q.wind, 1)}</td>
       <td>${fmt(r.flightTime)}</td><td>${fmt(r.maxHeight)}</td><td>${fmt(r.landingX)}</td><td>${fmt(r.landingY)}</td>
       <td>${fmt(r.horizontalRange)}</td><td>${r.steps}</td>
       <td class="l ${r.hitTarget ? 'good' : 'bad'}">${r.collisionStatus}</td>
-      <td class="l"><button class="icon-btn" data-act="load" title="Load these parameters">↺</button><button class="icon-btn danger" data-act="del" title="Delete">✕</button></td>
+      <td class="l"><button class="icon-btn" data-act="load" title="Nạp lại thông số">↺</button><button class="icon-btn danger" data-act="del" title="Xoá">✕</button></td>
     </tr>`;
   }).join('');
-  $('#historyTable').innerHTML = `<thead><tr><th class="l">#</th><th class="l">Src</th><th>Angle</th><th>Power</th><th>Dist</th><th>Wind</th>
-    <th>Flight t</th><th>Max H</th><th>Land X</th><th>Land Y</th><th>Range</th><th>Steps</th><th class="l">Collision</th><th></th></tr></thead><tbody>${rows}</tbody>`;
+  $('#historyTable').innerHTML = `<thead><tr><th class="l">#</th><th class="l">Nguồn</th><th>Góc</th><th>Lực</th><th>K.cách</th><th>Gió</th>
+    <th>T bay</th><th>H max</th><th>X rơi</th><th>Y rơi</th><th>Tầm xa</th><th>Số bước</th><th class="l">Va chạm</th><th></th></tr></thead><tbody>${rows}</tbody>`;
 }
 
 async function ensurePoints(h) {
@@ -435,7 +435,7 @@ function onHistoryClick(e) {
     renderHistory(); refreshTrajectories(); saveHistory();
   } else if (act === 'load') {
     applyParams(requestToParams(h.request));
-    toast(`Loaded parameters of shot #${h.n}`);
+    toast(`Đã nạp thông số phát #${h.n}`);
   }
 }
 
@@ -472,7 +472,7 @@ function loadHistory() {
 }
 
 function exportHistoryCsv() {
-  if (!history.length) { toast('History is empty', true); return; }
+  if (!history.length) { toast('Lịch sử trống', true); return; }
   const cols = ['n', 'time', 'source', 'angle', 'effectiveAngle', 'power', 'distance', 'wind', 'windEnabled', 'windMode', 'gravity',
     'dragType', 'dragCoefficient', 'integrator', 'deltaTime', 'initialSpeed', 'flightTime', 'maxHeight', 'landingX', 'landingY',
     'horizontalRange', 'missDistance', 'steps', 'status',
@@ -512,14 +512,14 @@ function setApiStatus(ok, msg) {
   const el = $('#apiStatus');
   el.classList.toggle('ok', ok);
   el.classList.toggle('err', !ok);
-  $('.txt', el).textContent = ok ? 'physics API online' : 'API error';
+  $('.txt', el).textContent = ok ? 'máy chủ vật lý: trực tuyến' : 'lỗi máy chủ';
   el.title = msg || '';
 }
 
 function handleError(e) {
   console.error(e);
-  if (e.status === 400) toast('Invalid input: ' + e.message, true);
-  else { setApiStatus(false, e.message); toast('Backend error: ' + e.message, true); }
+  if (e.status === 400) toast('Dữ liệu không hợp lệ: ' + e.message, true);
+  else { setApiStatus(false, e.message); toast('Lỗi máy chủ: ' + e.message, true); }
 }
 
 function switchTab(name) {
@@ -540,7 +540,7 @@ async function boot() {
     setApiStatus(true);
   } catch (e) {
     setApiStatus(false, e.message);
-    toast('Cannot reach the physics API – is `dotnet run` running?', true);
+    toast('Không kết nối được máy chủ vật lý – `dotnet run` đã chạy chưa?', true);
   }
   Object.assign(params, DEFAULTS);
   syncAll();
@@ -566,7 +566,7 @@ async function boot() {
 
   $('#btnExportCsv').addEventListener('click', exportHistoryCsv);
   $('#btnClearHistory').addEventListener('click', () => {
-    if (history.length && !confirm(`Delete all ${history.length} shots from the history?`)) return;
+    if (history.length && !confirm(`Xoá toàn bộ ${history.length} phát bắn trong lịch sử?`)) return;
     history = []; historyCounter = 0; renderHistory(); refreshTrajectories(); saveHistory();
   });
   $('#btnHistoryShowAll').addEventListener('click', async () => {
@@ -596,7 +596,7 @@ async function boot() {
 
   loadHistory();
   renderHistory();
-  $('#stats').innerHTML = '<div class="muted">Press <b>Simulate</b> (Enter) or <b>Fire</b> (Space).</div>';
+  $('#stats').innerHTML = '<div class="muted">Bấm <b>Mô phỏng</b> (Enter) hoặc <b>Bắn</b> (Space).</div>';
 
   initReverse({
     buildRequest, applyParams, getParams: () => ({ ...params }), runCompare, toast, handleError, csvCell, download,

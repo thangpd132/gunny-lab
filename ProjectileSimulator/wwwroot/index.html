@@ -3,282 +3,121 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gunny Research Lab – 2D Projectile Simulator</title>
-  <link rel="stylesheet" href="css/style.css">
+  <title>Bắn Pháo 2D – Gunny Research Lab</title>
+  <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <span class="logo" aria-hidden="true">◎</span>
-    <div>
-      <div class="brand-title">GUNNY RESEARCH LAB</div>
-      <div class="brand-sub">2D Projectile Simulator · physics engine in ASP.NET Core</div>
+<div class="game">
+  <!-- ===================== MÀN CHƠI ===================== -->
+  <div class="stage" id="stage">
+    <canvas id="gameCanvas" aria-label="Màn chơi"></canvas>
+
+    <div class="topbar">
+      <div class="shot-card hidden" id="shotCard"></div>
+      <div class="top-actions">
+        <span class="api-dot" id="apiDot" title="Máy chủ vật lý"></span>
+        <button class="chip" id="btnSettings" tabindex="-1">⚙ Cài đặt</button>
+        <a class="chip" href="research.html" tabindex="-1">Nghiên cứu công thức</a>
+      </div>
     </div>
+    <div class="message" id="message"></div>
   </div>
-  <nav class="tabs" role="tablist">
-    <button class="tab active" data-tab="sim" role="tab">Simulator</button>
-    <button class="tab" data-tab="re" role="tab">Reverse Engineering</button>
-  </nav>
-  <div class="api-status" id="apiStatus" title="Backend status"><span class="dot"></span><span class="txt">connecting…</span></div>
-</header>
 
-<main class="layout">
-  <!-- ===================== STAGE (canvas + results) ===================== -->
-  <section class="stage">
-    <div class="canvas-wrap" id="canvasWrap">
-      <canvas id="simCanvas" aria-label="Simulation canvas"></canvas>
-      <div class="canvas-toolbar">
-        <button class="mini" id="btnFitView" title="Zoom to fit everything">Fit view</button>
-        <button class="mini" id="btnResetView" title="Default view (double-click canvas)">Reset view</button>
-        <label class="mini-check"><input type="checkbox" id="chkGrid" checked> Grid</label>
-        <label class="mini-check"><input type="checkbox" id="chkLabels" checked> Labels</label>
-        <label class="mini-check"><input type="checkbox" id="chkAim" checked> Aim line</label>
+  <!-- ===================== THANH ĐIỀU KHIỂN ===================== -->
+  <footer class="hud">
+    <div class="dial" title="Góc bắn">
+      <svg viewBox="-50 -50 100 100" aria-hidden="true">
+        <circle r="44" class="dial-face"/>
+        <path d="M -38 0 A 38 38 0 0 1 38 0" class="dial-arc"/>
+        <g class="dial-ticks" id="dialTicks"></g>
+        <line x1="0" y1="0" x2="36" y2="0" class="dial-needle" id="dialNeedle"/>
+        <circle r="4" class="dial-hub"/>
+      </svg>
+      <div class="dial-value"><span id="angleValue">45</span>°</div>
+      <div class="dial-label">GÓC</div>
+    </div>
+
+    <div class="power">
+      <div class="power-head">
+        <span class="power-title">LỰC</span>
+        <span class="power-hint" id="powerHint">Giữ Space để tích lực</span>
+        <span class="power-value"><span id="powerValue">0</span>%</span>
       </div>
-      <div class="canvas-hud" id="hud"></div>
-      <div class="canvas-legend" id="legend"></div>
-      <div class="canvas-help">Scroll = zoom · drag = pan · drag target B = change distance</div>
-    </div>
-
-    <div class="bottom">
-      <!-- Results of the last committed shot -->
-      <div class="card" id="resultsCard">
-        <div class="card-head">
-          <h3>Shot result</h3>
-          <span class="badge" id="statusBadge">—</span>
-        </div>
-        <div class="stats" id="stats"></div>
-        <div class="models-line" id="modelsLine"></div>
+      <div class="power-track" id="powerTrack" role="slider" aria-label="Lực bắn" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="power-fill" id="powerFill"></div>
+        <div class="power-ticks"></div>
+        <div class="power-last hidden" id="powerLast" title="Lực phát trước"></div>
       </div>
-
-      <!-- Compare table -->
-      <div class="card hidden" id="compareCard">
-        <div class="card-head">
-          <h3>Comparison</h3>
-          <button class="mini" id="btnCloseCompare">Hide</button>
-        </div>
-        <div class="table-scroll">
-          <table class="data" id="compareTable"></table>
-        </div>
-      </div>
-
-      <!-- RE evaluation -->
-      <div class="card hidden" id="evalCard">
-        <div class="card-head">
-          <h3>Predicted vs. observed</h3>
-          <div class="metrics" id="evalMetrics"></div>
-        </div>
-        <div class="table-scroll">
-          <table class="data" id="evalTable"></table>
-        </div>
-      </div>
-
-      <!-- History -->
-      <div class="card">
-        <div class="card-head">
-          <h3>Shot history <span class="muted" id="historyCount"></span></h3>
-          <div class="btn-row">
-            <button class="mini" id="btnHistoryShowAll">Show all</button>
-            <button class="mini" id="btnHistoryHideAll">Hide all</button>
-            <button class="mini" id="btnExportCsv">Export CSV</button>
-            <button class="mini danger" id="btnClearHistory">Clear history</button>
-          </div>
-        </div>
-        <div class="table-scroll history-scroll">
-          <table class="data" id="historyTable"></table>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================== SIDE PANEL ===================== -->
-  <aside class="panel">
-    <!-- ---------- Simulator tab ---------- -->
-    <div class="tab-page" id="page-sim">
-      <section class="group">
-        <h4>Shot</h4>
-        <div class="slider" data-key="distance" data-min="1" data-max="10" data-step="0.1" data-unit="u" data-label="Distance"></div>
-        <div class="slider" data-key="angle" data-min="0" data-max="180" data-step="1" data-unit="°" data-label="Angle"></div>
-        <div class="slider" data-key="power" data-min="1" data-max="100" data-step="1" data-unit="" data-label="Power"></div>
-        <div class="slider" data-key="wind" data-min="-20" data-max="20" data-step="0.5" data-unit="" data-label="Wind" data-hint="− ← left · right → +"></div>
-      </section>
-
-      <section class="group">
-        <h4>Physics</h4>
-        <div class="slider" data-key="gravity" data-min="0" data-max="30" data-step="0.01" data-unit="u/s²" data-label="Gravity"></div>
-
-        <div class="row">
-          <label class="check"><input type="checkbox" id="windEnabled"> Wind enabled</label>
-          <select id="windMode" title="Wind model">
-            <option value="WindAcceleration">Wind acceleration (force)</option>
-            <option value="ConstantWind">Constant wind (air drift)</option>
-          </select>
-        </div>
-
-        <div class="row">
-          <label class="check"><input type="checkbox" id="dragEnabled"> Air resistance</label>
-          <select id="dragType" title="Drag law">
-            <option value="Quadratic">Quadratic: F = −½·ρ·Cd·A·|v|·v</option>
-            <option value="Linear">Linear: F = −b·v</option>
-          </select>
-        </div>
-        <div class="slider" data-key="dragCoefficient" data-min="0" data-max="2" data-step="0.01" data-unit="" data-label="Drag coeff. (Cd / b)"></div>
-        <details class="adv">
-          <summary>Drag details (ρ, A, m)</summary>
-          <div class="slider" data-key="airDensity" data-min="0" data-max="5" data-step="0.005" data-unit="" data-label="Air density ρ"></div>
-          <div class="slider" data-key="crossSectionArea" data-min="0" data-max="0.5" data-step="0.005" data-unit="u²" data-label="Area A"></div>
-          <div class="slider" data-key="mass" data-min="0.05" data-max="10" data-step="0.05" data-unit="" data-label="Mass m"></div>
-        </details>
-      </section>
-
-      <section class="group">
-        <h4>Simulation</h4>
-        <div class="row">
-          <label for="integrator">Integrator</label>
-          <select id="integrator">
-            <option value="SemiImplicitEuler">Semi-implicit Euler</option>
-            <option value="RungeKutta4">Runge–Kutta 4</option>
-            <option value="ExplicitEuler">Explicit Euler</option>
-          </select>
-        </div>
-        <div class="slider" data-key="deltaTime" data-min="0.001" data-max="0.05" data-step="0.001" data-unit="s" data-label="Δt (time step)"></div>
-        <div class="slider" data-key="maxTime" data-min="1" data-max="60" data-step="1" data-unit="s" data-label="Max time"></div>
-        <div class="slider" data-key="playbackSpeed" data-min="0.1" data-max="3" data-step="0.05" data-unit="×" data-label="Playback speed" data-local="1"></div>
-        <label class="check"><input type="checkbox" id="livePreview" checked> Live preview while dragging sliders</label>
-      </section>
-
-      <section class="group buttons">
-        <button class="btn primary" id="btnSimulate">Simulate</button>
-        <button class="btn fire" id="btnFire">Fire</button>
-        <button class="btn" id="btnPause" disabled>Pause</button>
-        <button class="btn" id="btnResume" disabled>Resume</button>
-        <button class="btn" id="btnCompare" title="Run models A–D with the current parameters">Compare</button>
-        <button class="btn" id="btnClear">Clear Trajectory</button>
-        <button class="btn danger" id="btnReset">Reset</button>
-      </section>
-      <p class="note">Units: <b>u</b> = one Distance step. The barrel shows the <i>effective</i> angle (Angle + Angle Offset). Shots also use the calibration values from the Reverse Engineering tab (Model D).</p>
+      <div class="power-scale"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span><span>100</span></div>
     </div>
 
-    <!-- ---------- Reverse engineering tab ---------- -->
-    <div class="tab-page hidden" id="page-re">
-      <section class="group">
-        <h4>Model parameters <span class="muted">(Model D – used by every shot)</span></h4>
-        <div class="formula">V0 = k · VelMul · (Power · PowMul)<sup>exp</sup> · g<sub>eff</sub> = g · GravMul · θ = Angle + Offset</div>
-        <div class="slider" data-key="cal.velocityMultiplier" data-min="0.1" data-max="3" data-step="0.001" data-label="Initial Velocity Multiplier"></div>
-        <div class="slider" data-key="cal.gravityMultiplier" data-min="0" data-max="3" data-step="0.001" data-label="Gravity Multiplier"></div>
-        <div class="slider" data-key="cal.windMultiplier" data-min="-3" data-max="5" data-step="0.01" data-label="Wind Multiplier"></div>
-        <div class="slider" data-key="dragCoefficient" data-min="0" data-max="2" data-step="0.01" data-label="Air Resistance Coefficient" data-mirror="1"></div>
-        <div class="slider" data-key="cal.angleOffset" data-min="-15" data-max="15" data-step="0.1" data-unit="°" data-label="Angle Offset"></div>
-        <div class="slider" data-key="cal.powerMultiplier" data-min="0.1" data-max="3" data-step="0.001" data-label="Power Multiplier"></div>
-        <div class="slider" data-key="cal.launchHeight" data-min="0" data-max="3" data-step="0.01" data-unit="u" data-label="Launch Height"></div>
-        <details class="adv">
-          <summary>Advanced formula constants</summary>
-          <div class="slider" data-key="cal.powerExponent" data-min="0.3" data-max="2" data-step="0.01" data-label="Power exponent"></div>
-          <div class="slider" data-key="cal.powerToVelocity" data-min="0.01" data-max="0.5" data-step="0.001" data-unit="u/s" data-label="k: power → speed"></div>
-          <div class="slider" data-key="cal.windAccelerationScale" data-min="0" data-max="0.5" data-step="0.001" data-label="Wind → accel. scale"></div>
-          <div class="slider" data-key="cal.windDriftScale" data-min="0" data-max="0.3" data-step="0.001" data-label="Wind → drift scale"></div>
-          <div class="slider" data-key="barrelLength" data-min="0" data-max="1" data-step="0.01" data-unit="u" data-label="Barrel length"></div>
-          <div class="slider" data-key="targetWidth" data-min="0.05" data-max="2" data-step="0.01" data-unit="u" data-label="Target width"></div>
-          <div class="slider" data-key="targetHeight" data-min="0.05" data-max="2" data-step="0.01" data-unit="u" data-label="Target height"></div>
-        </details>
-      </section>
-
-      <section class="group">
-        <h4>Compare models</h4>
-        <div class="model-checks" id="modelChecks">
-          <label><input type="checkbox" value="Basic" checked><span class="sw" style="--c:#4fc3f7"></span>A: Basic Projectile</label>
-          <label><input type="checkbox" value="Wind" checked><span class="sw" style="--c:#81c784"></span>B: Projectile + Wind</label>
-          <label><input type="checkbox" value="Drag" checked><span class="sw" style="--c:#ffb74d"></span>C: Projectile + Air Resistance</label>
-          <label><input type="checkbox" value="Custom" checked><span class="sw" style="--c:#f06292"></span>D: Custom Model</label>
-        </div>
-        <button class="btn" id="btnCompareModels">Compare selected models</button>
-      </section>
-
-      <section class="group">
-        <h4>Experimental data <span class="muted" id="expCount"></span></h4>
-        <p class="note warn">Enter shots you measured yourself in the game. Coordinates in <b>u</b>, X measured from the shooter. Flight time is optional but lets the fit separate velocity from gravity.</p>
-        <div class="table-scroll exp-scroll">
-          <table class="data editable" id="expTable"></table>
-        </div>
-        <div class="btn-row">
-          <button class="mini" id="btnExpAdd">+ Row</button>
-          <button class="mini" id="btnExpAddCurrent" title="Add a row with the current Distance/Angle/Power/Wind">+ From current shot</button>
-          <button class="mini" id="btnExpImport">Import CSV</button>
-          <button class="mini" id="btnExpExport">Export CSV</button>
-          <button class="mini" id="btnExpSynthetic" title="For testing the optimizer only">Synthetic test data…</button>
-          <button class="mini danger" id="btnExpClear">Clear</button>
-          <input type="file" id="expFile" accept=".csv,text/csv,text/plain" hidden>
-        </div>
-        <div class="row">
-          <label for="timeWeight" title="Converts a flight-time error (s) into distance units in the objective">Flight-time weight (u/s)</label>
-          <input type="number" id="timeWeight" value="5" min="0" step="0.5">
-        </div>
-        <div class="row">
-          <label class="check"><input type="checkbox" id="showObservations" checked> Show observed points on canvas</label>
-        </div>
-        <button class="btn primary" id="btnEvaluate">Evaluate error</button>
-      </section>
-
-      <section class="group">
-        <h4>Parameter optimization</h4>
-        <div class="row">
-          <label for="optMethod">Method</label>
-          <select id="optMethod">
-            <option value="GridThenLeastSquares">Grid search → Least squares (LM)</option>
-            <option value="GridSearch">Grid search only</option>
-            <option value="LeastSquares">Least squares (Levenberg–Marquardt)</option>
-          </select>
-        </div>
-        <div class="row">
-          <label for="optIter">Max LM iterations</label>
-          <input type="number" id="optIter" value="100" min="1" max="1000">
-        </div>
-        <div class="row">
-          <label for="optGrid">Max grid evaluations</label>
-          <input type="number" id="optGrid" value="20000" min="1" max="200000" step="1000">
-        </div>
-        <div class="table-scroll">
-          <table class="data editable" id="paramTable"></table>
-        </div>
-        <button class="btn primary" id="btnOptimize">Optimize parameters</button>
-        <div class="opt-result" id="optResult"></div>
-      </section>
+    <div class="info">
+      <div class="info-row"><span class="info-label">Khoảng cách</span><b id="distanceValue">5.0</b></div>
+      <input type="range" id="distanceSlider" min="1" max="10" step="0.1" value="5" aria-label="Khoảng cách" tabindex="-1">
+      <div class="info-row"><span class="info-label">Gió</span><b id="windValue">0</b></div>
     </div>
-  </aside>
-</main>
 
-<!-- Import / synthetic dialogs -->
-<dialog id="importDialog">
-  <form method="dialog" class="dlg">
-    <h3>Import experiments (CSV)</h3>
-    <p class="note">Header (any order, case-insensitive): <code>label,distance,angle,power,wind,observedLandingX,observedLandingY,observedFlightTime</code>. Separators: comma, semicolon or tab.</p>
-    <textarea id="importText" rows="10" placeholder="distance,angle,power,wind,observedLandingX,observedLandingY&#10;5,45,50,0,5.2,0"></textarea>
-    <div class="btn-row">
-      <button class="btn" type="button" id="btnImportFile">Choose file…</button>
-      <label class="check"><input type="checkbox" id="importReplace"> Replace existing rows</label>
-      <span class="spacer"></span>
-      <button class="btn" value="cancel">Cancel</button>
-      <button class="btn primary" value="ok" id="btnImportOk">Import</button>
+    <div class="actions">
+      <button class="btn-fire" id="btnFire" tabindex="-1">BẮN</button>
+      <button class="btn-reset" id="btnReset" tabindex="-1">Đặt lại</button>
     </div>
-  </form>
-</dialog>
 
-<dialog id="synthDialog">
-  <form method="dialog" class="dlg">
-    <h3>Generate SYNTHETIC test data</h3>
-    <p class="note warn">These rows are produced by <b>this simulator</b> with the current parameters (plus optional noise). They are <b>not</b> Gunny data — use them only to verify that the optimizer can recover known parameters (e.g. generate, then change a multiplier, then press Optimize).</p>
-    <div class="row"><label>Number of shots</label><input type="number" id="synthCount" value="8" min="1" max="50"></div>
-    <div class="row"><label>Noise σ (u)</label><input type="number" id="synthNoise" value="0" min="0" step="0.01"></div>
-    <div class="row"><label class="check"><input type="checkbox" id="synthTime" checked> Include flight time</label></div>
-    <div class="btn-row">
-      <span class="spacer"></span>
-      <button class="btn" value="cancel">Cancel</button>
-      <button class="btn primary" value="ok">Generate</button>
+    <div class="keys">
+      <span><kbd>↑</kbd><kbd>↓</kbd> chỉnh góc</span>
+      <span><kbd>←</kbd><kbd>→</kbd> di chuyển</span>
+      <span><kbd>Space</kbd> giữ để tích lực, thả để bắn</span>
+      <span><kbd>Enter</kbd> bắn với lực hiện tại</span>
+      <span><kbd>R</kbd> đặt lại</span>
     </div>
-  </form>
-</dialog>
+  </footer>
+</div>
 
-<div class="toast" id="toast"></div>
+<!-- ===================== CÀI ĐẶT NÂNG CAO ===================== -->
+<aside class="drawer" id="settings" aria-hidden="true">
+  <div class="drawer-head">
+    <h2>Cài đặt nâng cao</h2>
+    <button class="chip" id="btnCloseSettings" tabindex="-1">Đóng ✕</button>
+  </div>
 
-<script type="module" src="js/app.js"></script>
+  <h3>Vật lý</h3>
+  <label class="field"><span>Trọng lực <b data-out="gravity"></b> u/s²</span>
+    <input type="range" data-setting="gravity" min="1" max="25" step="0.01"></label>
+
+  <label class="check"><input type="checkbox" data-setting="windEnabled"> Bật gió</label>
+  <label class="field"><span>Gió <b data-out="wind"></b> <small>(âm = sang trái)</small></span>
+    <input type="range" data-setting="wind" min="-20" max="20" step="0.5"></label>
+  <label class="field"><span>Kiểu gió</span>
+    <select data-setting="windMode">
+      <option value="WindAcceleration">Gió là lực đẩy ngang</option>
+      <option value="ConstantWind">Gió cuốn theo khối khí</option>
+    </select></label>
+  <label class="check"><input type="checkbox" data-setting="randomWind"> Gió ngẫu nhiên sau mỗi phát bắn</label>
+
+  <label class="check"><input type="checkbox" data-setting="dragEnabled"> Bật lực cản không khí</label>
+  <label class="field"><span>Hệ số lực cản <b data-out="dragCoefficient"></b></span>
+    <input type="range" data-setting="dragCoefficient" min="0" max="2" step="0.01"></label>
+
+  <h3>Điều khiển</h3>
+  <label class="field"><span>Tốc độ di chuyển <b data-out="moveSpeed"></b> u/s</span>
+    <input type="range" data-setting="moveSpeed" min="0.3" max="5" step="0.1"></label>
+  <label class="field"><span>Thời gian tích đầy lực <b data-out="fillTime"></b> s</span>
+    <input type="range" data-setting="fillTime" min="0.5" max="5" step="0.1"></label>
+  <label class="field"><span>Tốc độ đạn bay (hoạt ảnh) <b data-out="playbackSpeed"></b>×</span>
+    <input type="range" data-setting="playbackSpeed" min="0.25" max="3" step="0.05"></label>
+
+  <h3>Hiển thị</h3>
+  <label class="check"><input type="checkbox" data-setting="showPrediction"> Hiện quỹ đạo dự đoán (nét đứt)</label>
+  <label class="check"><input type="checkbox" data-setting="keepTrails"> Giữ lại đường đạn các phát trước</label>
+  <label class="check"><input type="checkbox" data-setting="showGrid"> Hiện lưới toạ độ</label>
+
+  <h3>Mô phỏng</h3>
+  <label class="field"><span>Bước thời gian Δt <b data-out="deltaTime"></b> s</span>
+    <input type="range" data-setting="deltaTime" min="0.002" max="0.05" step="0.001"></label>
+
+  <button class="chip wide" id="btnDefaults" tabindex="-1">Khôi phục cài đặt mặc định</button>
+  <p class="note">Vận tốc ban đầu V0 = 0.14 × Lực (u/s). Mọi phép tính quỹ đạo do Physics Engine C# ở máy chủ thực hiện theo từng bước Δt.</p>
+</aside>
+
+<script type="module" src="js/game/GameController.js"></script>
 </body>
 </html>

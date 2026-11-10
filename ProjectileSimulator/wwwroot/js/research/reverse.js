@@ -12,19 +12,19 @@ const $ = (s, r = document) => r.querySelector(s);
 const EXP_KEY = 'gunnylab.experiments.v1';
 const PARAM_KEY = 'gunnylab.optparams.v1';
 const COLUMNS = [
-  { key: 'label', title: 'Label', type: 'text' },
-  { key: 'distance', title: 'Dist', step: 0.1 },
-  { key: 'angle', title: 'Angle', step: 1 },
-  { key: 'power', title: 'Power', step: 1 },
-  { key: 'wind', title: 'Wind', step: 0.5 },
-  { key: 'observedLandingX', title: 'Obs X', step: 0.01 },
-  { key: 'observedLandingY', title: 'Obs Y', step: 0.01 },
-  { key: 'observedFlightTime', title: 'Obs t (s)', step: 0.01, optional: true },
+  { key: 'label', title: 'Nhãn', type: 'text' },
+  { key: 'distance', title: 'K.cách', step: 0.1 },
+  { key: 'angle', title: 'Góc', step: 1 },
+  { key: 'power', title: 'Lực', step: 1 },
+  { key: 'wind', title: 'Gió', step: 0.5 },
+  { key: 'observedLandingX', title: 'X đo', step: 0.01 },
+  { key: 'observedLandingY', title: 'Y đo', step: 0.01 },
+  { key: 'observedFlightTime', title: 't đo (s)', step: 0.01, optional: true },
 ];
 const PARAM_LABELS = {
-  VelocityMultiplier: 'Velocity ×', PowerMultiplier: 'Power ×', PowerExponent: 'Power exp',
-  GravityMultiplier: 'Gravity ×', WindMultiplier: 'Wind ×', DragCoefficient: 'Drag coeff',
-  AngleOffset: 'Angle offset', LaunchHeight: 'Launch H',
+  VelocityMultiplier: 'Vận tốc ×', PowerMultiplier: 'Lực ×', PowerExponent: 'Số mũ lực',
+  GravityMultiplier: 'Trọng lực ×', WindMultiplier: 'Gió ×', DragCoefficient: 'Hệ số cản',
+  AngleOffset: 'Lệch góc', LaunchHeight: 'Độ cao bắn',
 };
 /** Optimizer parameter name → UI param key. */
 const PARAM_KEYS = {
@@ -49,10 +49,10 @@ export function initReverse(context) {
   $('#btnExpAddCurrent').addEventListener('click', () => {
     const p = ctx.getParams();
     addRow({ distance: p.distance, angle: p.angle, power: p.power, wind: p.wind });
-    ctx.toast('Row added – now type the landing position you observed in the game');
+    ctx.toast('Đã thêm dòng – hãy nhập vị trí rơi bạn quan sát được trong game');
   });
   $('#btnExpClear').addEventListener('click', () => {
-    if (experiments.length && !confirm(`Delete all ${experiments.length} experiment rows?`)) return;
+    if (experiments.length && !confirm(`Xoá toàn bộ ${experiments.length} dòng dữ liệu?`)) return;
     experiments = []; saveExperiments(); renderExperiments(); clearEval();
   });
   $('#btnExpExport').addEventListener('click', exportCsv);
@@ -67,12 +67,12 @@ export function initReverse(context) {
     if ($('#importDialog').returnValue !== 'ok') return;
     try {
       const rows = parseCsv($('#importText').value);
-      if (!rows.length) throw new Error('no data rows found');
+      if (!rows.length) throw new Error('không tìm thấy dòng dữ liệu');
       if ($('#importReplace').checked) experiments = [];
       experiments.push(...rows);
       saveExperiments(); renderExperiments();
-      ctx.toast(`Imported ${rows.length} rows`);
-    } catch (err) { ctx.toast('Import failed: ' + err.message, true); }
+      ctx.toast(`Đã nhập ${rows.length} dòng`);
+    } catch (err) { ctx.toast('Nhập thất bại: ' + err.message, true); }
   });
   $('#btnExpSynthetic').addEventListener('click', () => $('#synthDialog').showModal());
   $('#synthDialog').addEventListener('close', () => { if ($('#synthDialog').returnValue === 'ok') generateSynthetic(); });
@@ -114,7 +114,7 @@ function renderExperiments() {
   $('#expCount').textContent = experiments.length ? `(${experiments.length})` : '';
   const head = `<thead><tr><th>#</th>${COLUMNS.map(c => `<th class="${c.type === 'text' ? 'l' : ''}">${c.title}</th>`).join('')}<th></th></tr></thead>`;
   if (!experiments.length) {
-    $('#expTable').innerHTML = head + `<tbody><tr><td colspan="${COLUMNS.length + 2}" class="l muted">No observations yet. Add rows with the shots you measured in the game.</td></tr></tbody>`;
+    $('#expTable').innerHTML = head + `<tbody><tr><td colspan="${COLUMNS.length + 2}" class="l muted">Chưa có dữ liệu. Hãy thêm các phát bắn bạn đo được trong game.</td></tr></tbody>`;
     updateObservationLayer();
     return;
   }
@@ -122,7 +122,7 @@ function renderExperiments() {
     const v = e[c.key];
     if (c.type === 'text') return `<td class="l"><input type="text" data-k="${c.key}" value="${esc(v ?? '')}"></td>`;
     return `<td><input type="number" data-k="${c.key}" step="${c.step}" value="${v == null ? '' : v}" ${c.optional ? 'placeholder="—"' : ''}></td>`;
-  }).join('')}<td class="l"><button class="icon-btn" data-act="load" title="Load this shot into the simulator">▶</button><button class="icon-btn danger" data-act="del" title="Delete row">✕</button></td></tr>`).join('');
+  }).join('')}<td class="l"><button class="icon-btn" data-act="load" title="Nạp phát bắn này vào trình mô phỏng">▶</button><button class="icon-btn danger" data-act="del" title="Xoá dòng">✕</button></td></tr>`).join('');
   $('#expTable').innerHTML = head + `<tbody>${body}</tbody>`;
   updateObservationLayer();
 }
@@ -155,7 +155,7 @@ function onExpClick(e) {
   } else if (act === 'load') {
     const x = experiments[i];
     ctx.applyParams({ distance: x.distance, angle: x.angle, power: x.power, wind: x.wind });
-    ctx.toast(`Experiment #${i + 1} loaded into the simulator`);
+    ctx.toast(`Đã nạp thí nghiệm #${i + 1}`);
   }
 }
 
@@ -171,7 +171,7 @@ function updateObservationLayer() {
 // ------------------------------------------------------------------ CSV
 
 function exportCsv() {
-  if (!experiments.length) { ctx.toast('No experiments to export', true); return; }
+  if (!experiments.length) { ctx.toast('Không có dữ liệu để xuất', true); return; }
   const lines = [COLUMNS.map(c => c.key).join(',')];
   for (const e of experiments) lines.push(COLUMNS.map(c => ctx.csvCell(e[c.key])).join(','));
   ctx.download('experiments.csv', lines.join('\n'));
@@ -211,7 +211,7 @@ function parseCsv(text) {
       if (k === 'label') { row.label = cells[i]; return; }
       if (cells[i] === '') { if (k === 'observedFlightTime') row[k] = null; return; }
       const v = parseFloat(cells[i].replace(',', '.'));
-      if (!isFinite(v)) throw new Error(`invalid number "${cells[i]}" in line: ${line}`);
+      if (!isFinite(v)) throw new Error(`số không hợp lệ "${cells[i]}" ở dòng: ${line}`);
       row[k] = v;
     });
     rows.push(row);
@@ -250,7 +250,7 @@ async function generateSynthetic() {
       });
     });
     saveExperiments(); renderExperiments();
-    ctx.toast(`${n} SYNTHETIC rows generated from the current model (not game data)`);
+    ctx.toast(`Đã sinh ${n} dòng TỔNG HỢP từ mô hình hiện tại (không phải dữ liệu game)`);
   } catch (e) { ctx.handleError(e); }
 }
 
@@ -261,7 +261,7 @@ const round = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
 function timeWeight() { return Math.max(0, parseFloat($('#timeWeight').value) || 0); }
 
 async function evaluate() {
-  if (!experiments.length) { ctx.toast('Add at least one experiment first', true); return; }
+  if (!experiments.length) { ctx.toast('Hãy thêm ít nhất một thí nghiệm', true); return; }
   const btn = $('#btnEvaluate');
   btn.disabled = true;
   try {
@@ -300,7 +300,7 @@ function clearEval() {
 function renderEval(ev) {
   ctx.showEvalCard(true);
   const m = ev.metrics;
-  $('#evalMetrics').innerHTML = `MAE <b>${f(m.meanAbsoluteError, 4)}</b> · RMSE <b>${f(m.rootMeanSquareError, 4)}</b> · max <b>${f(m.maxError, 4)}</b> · bias X <b>${f(m.meanSignedErrorX, 4)}</b>${m.flightTimeRmse != null ? ` · t-RMSE <b>${f(m.flightTimeRmse, 4)} s</b>` : ''}`;
+  $('#evalMetrics').innerHTML = `MAE <b>${f(m.meanAbsoluteError, 4)}</b> · RMSE <b>${f(m.rootMeanSquareError, 4)}</b> · lớn nhất <b>${f(m.maxError, 4)}</b> · độ chệch X <b>${f(m.meanSignedErrorX, 4)}</b>${m.flightTimeRmse != null ? ` · t-RMSE <b>${f(m.flightTimeRmse, 4)} s</b>` : ''}`;
   const rows = ev.predictions.map(p => `<tr>
     <td>${p.index + 1}</td><td class="l">${esc(p.label ?? '')}</td>
     <td>${f(p.angle, 1)}</td><td>${f(p.power, 1)}</td><td>${f(p.wind, 1)}</td>
@@ -310,11 +310,11 @@ function renderEval(ev) {
     <td class="${p.errorDistance < 0.05 ? 'good' : p.errorDistance > 0.5 ? 'bad' : ''}">${f(p.errorDistance)}</td>
     <td>${f(p.flightTime)}</td><td>${p.actualFlightTime != null ? f(p.actualFlightTime) : '—'}</td>
     <td>${p.actualFlightTime != null ? (p.errorTime >= 0 ? '+' : '') + f(p.errorTime) : '—'}</td>
-    <td class="l">${p.reachedObservedHeight ? '' : '<span class="bad" title="Trajectory never reaches the observed height – closest approach used">never reaches Y</span>'}</td>
+    <td class="l">${p.reachedObservedHeight ? '' : '<span class="bad" title="Quỹ đạo không lên tới độ cao quan sát – dùng điểm gần nhất">không tới Y</span>'}</td>
   </tr>`).join('');
-  $('#evalTable').innerHTML = `<thead><tr><th>#</th><th class="l">Label</th><th>Angle</th><th>Power</th><th>Wind</th>
-    <th>Pred X</th><th>Pred Y</th><th>Actual X</th><th>Actual Y</th><th>Err X</th><th>Error dist</th>
-    <th>Pred t</th><th>Actual t</th><th>Err t</th><th class="l"></th></tr></thead><tbody>${rows}</tbody>`;
+  $('#evalTable').innerHTML = `<thead><tr><th>#</th><th class="l">Nhãn</th><th>Góc</th><th>Lực</th><th>Gió</th>
+    <th>X dự đoán</th><th>Y dự đoán</th><th>X thực</th><th>Y thực</th><th>Sai số X</th><th>Sai số K.cách</th>
+    <th>t dự đoán</th><th>t thực</th><th>Sai số t</th><th class="l"></th></tr></thead><tbody>${rows}</tbody>`;
 }
 
 // ------------------------------------------------------------------ optimisation
@@ -337,7 +337,7 @@ function renderParamTable() {
     <td><input type="number" data-k="max" step="any" value="${p.max}"></td>
     <td><input type="number" data-k="steps" min="2" max="1000" step="1" value="${p.steps}"></td>
     <td class="muted">${f(ctx.getParams()[PARAM_KEYS[p.name]], 4)}</td></tr>`).join('');
-  $('#paramTable').innerHTML = `<thead><tr><th class="l">Fit</th><th>Min</th><th>Max</th><th>Grid n</th><th>Current</th></tr></thead><tbody>${rows}</tbody>`;
+  $('#paramTable').innerHTML = `<thead><tr><th class="l">Tối ưu</th><th>Min</th><th>Max</th><th>Số điểm</th><th>Hiện tại</th></tr></thead><tbody>${rows}</tbody>`;
 }
 
 function onParamEdit(e) {
@@ -355,13 +355,13 @@ function onParamEdit(e) {
 }
 
 async function optimize() {
-  if (!experiments.length) { ctx.toast('Add experiments first', true); return; }
-  if (!paramRanges.some(p => p.enabled)) { ctx.toast('Tick at least one parameter to fit', true); return; }
+  if (!experiments.length) { ctx.toast('Hãy thêm dữ liệu thực nghiệm trước', true); return; }
+  if (!paramRanges.some(p => p.enabled)) { ctx.toast('Hãy chọn ít nhất một tham số để tối ưu', true); return; }
   const btn = $('#btnOptimize');
   btn.disabled = true;
   const old = btn.textContent;
-  btn.textContent = 'Optimizing…';
-  $('#optResult').innerHTML = '<div class="box muted">Running on the server…</div>';
+  btn.textContent = 'Đang tối ưu…';
+  $('#optResult').innerHTML = '<div class="box muted">Đang chạy trên máy chủ…</div>';
   try {
     const req = {
       base: ctx.buildRequest(),
@@ -393,22 +393,22 @@ function renderOptResult(r) {
     `<tr><td class="l">${PARAM_LABELS[k] ?? k}</td><td>${f(r.initialParameters[k], 4)}</td><td>→</td><td><b>${f(v, 4)}</b></td></tr>`).join('');
   $('#optResult').innerHTML = `
     <div class="box">
-      <div>${r.method} · ${r.evaluations.toLocaleString()} evaluations · ${r.iterations} LM iterations · ${f(r.elapsedMs, 0)} ms</div>
+      <div>${r.method} · ${r.evaluations.toLocaleString()} lượt tính · ${r.iterations} vòng LM · ${f(r.elapsedMs, 0)} ms</div>
       <div>RMSE ${f(before.rootMeanSquareError, 4)} → <b>${f(after.rootMeanSquareError, 4)}</b> <span class="improve">(${gain >= 0 ? '−' : '+'}${Math.abs(gain).toFixed(1)}%)</span></div>
       <div>MAE  ${f(before.meanAbsoluteError, 4)} → <b>${f(after.meanAbsoluteError, 4)}</b></div>
       ${after.flightTimeRmse != null ? `<div>t-RMSE ${f(before.flightTimeRmse, 4)} → <b>${f(after.flightTimeRmse, 4)}</b> s</div>` : ''}
       <table class="data">${rows}</table>
-      <canvas id="convChart" width="600" height="120" title="Convergence (√objective/N per stage)"></canvas>
+      <canvas id="convChart" width="600" height="120" title="Hội tụ (√mục tiêu/N theo từng giai đoạn)"></canvas>
       ${r.notes.length ? `<ul>${r.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
     </div>
-    <button class="btn primary" id="btnApplyOpt" style="width:100%;margin-top:6px">Apply best parameters</button>`;
+    <button class="btn primary" id="btnApplyOpt" style="width:100%;margin-top:6px">Áp dụng tham số tốt nhất</button>`;
   drawConvergence($('#convChart'), r.rmseHistory);
   $('#btnApplyOpt').addEventListener('click', () => {
     const patch = {};
     for (const [k, v] of Object.entries(r.bestParameters)) patch[PARAM_KEYS[k]] = v;
     ctx.applyParams(patch);
     renderParamTable();
-    ctx.toast('Best parameters applied to Model D');
+    ctx.toast('Đã áp dụng tham số tốt nhất cho Mô hình D');
     evaluate();
   });
 }
@@ -430,9 +430,9 @@ function drawConvergence(c, hist) {
   });
   g.stroke();
   g.fillStyle = '#7d8ba3'; g.font = '18px monospace';
-  g.fillText(`start ${hist[0].toPrecision(3)}`, pad, 18);
+  g.fillText(`đầu ${hist[0].toPrecision(3)}`, pad, 18);
   g.textAlign = 'right';
-  g.fillText(`end ${hist[hist.length - 1].toPrecision(3)}`, w - pad, h - 4);
+  g.fillText(`cuối ${hist[hist.length - 1].toPrecision(3)}`, w - pad, h - 4);
 }
 
 // ------------------------------------------------------------------ utils

@@ -1,8 +1,10 @@
-# 2D Projectile Simulator – Gunny Research Lab
+# Gunny Research Lab – Bắn Pháo 2D
 
-Ứng dụng web mô phỏng quỹ đạo đường đạn 2D (lấy cảm hứng từ cơ chế bắn của Gunny) với **bộ máy vật lý thật chạy ở backend C#** và giao diện Canvas tương tác. Có chế độ **Reverse Engineering** để hiệu chỉnh mô hình bằng dữ liệu bạn tự đo trong game (grid search + bình phương tối thiểu Levenberg–Marquardt).
+Trò chơi bắn pháo 2D theo lượt, chạy trên web, lấy cảm hứng từ lối chơi của Gunny PC: nhân vật A bên trái, mục tiêu B bên phải, mặt đất phẳng, chỉnh góc bằng phím mũi tên, **giữ Space để tích lực, thả để bắn**. Quỹ đạo đạn do **Physics Engine C# ở backend** tính theo từng bước thời gian; trình duyệt chỉ vẽ và phát lại hoạt ảnh.
 
-> Ứng dụng **không** giả định biết thuật toán nội bộ của Gunny và **không** đi kèm dữ liệu Gunny nào. Mô hình là một giả thuyết có thể hiệu chỉnh được; dữ liệu thực nghiệm do bạn nhập vào.
+Ngoài màn chơi còn có trang **Nghiên cứu công thức** (giao diện kỹ thuật cũ, đã Việt hoá) để chỉnh thông số vật lý, so sánh mô hình và dò ngược công thức bằng dữ liệu bạn tự đo trong game.
+
+> Ứng dụng **không** giả định biết thuật toán nội bộ của Gunny và **không** dùng đồ hoạ hay dữ liệu của Gunny. Nhân vật và mục tiêu là hình khối tự vẽ.
 
 ---
 
@@ -23,7 +25,7 @@ cd ProjectileSimulator
 dotnet run
 ```
 
-Mở trình duyệt tại **http://localhost:5080** (cổng cấu hình trong `ProjectileSimulator/Properties/launchSettings.json`).
+Mở trình duyệt tại **http://localhost:5080** — màn chơi hiện ra ngay. Trang nghiên cứu ở **http://localhost:5080/research.html** (hoặc bấm nút *Nghiên cứu công thức* góc trên bên phải). Cổng cấu hình trong `ProjectileSimulator/Properties/launchSettings.json`.
 
 ## 3. Build và chạy test
 
@@ -68,13 +70,17 @@ GunnyLab/
 │   │   ├── ReverseEngineeringService.cs ← dự đoán điểm rơi, sai số, MAE/RMSE
 │   │   └── OptimizationService.cs       ← Grid search + Levenberg–Marquardt
 │   └── wwwroot/
-│       ├── index.html
-│       ├── css/style.css
+│       ├── index.html                   ← MÀN CHƠI (trang chính)
+│       ├── research.html                ← Nghiên cứu công thức
+│       ├── css/game.css, css/research.css
 │       └── js/
-│           ├── app.js        ← slider, nút, kết quả, lịch sử, CSV
-│           ├── canvas.js     ← vẽ Canvas, đổi tọa độ, zoom/pan, kéo mục tiêu
-│           ├── simulator.js  ← Fetch API client + hoạt ảnh (chỉ nội suy, không tính vật lý)
-│           └── reverse.js    ← Reverse Engineering Mode
+│           ├── game/
+│           │   ├── GameController.js    ← vòng lặp game, trạng thái, lượt bắn, HUD, cài đặt
+│           │   ├── KeyboardController.js← ↑↓ ←→ Space Enter R, chống lặp phím, mất focus
+│           │   ├── PowerController.js   ← tích lực 0–100 %, chốt lực khi thả, kéo tay
+│           │   ├── CanvasRenderer.js    ← hệ toạ độ, camera, nhân vật, bia, thước đo, đạn
+│           │   └── ProjectileSimulator.js← gọi API vật lý, phát lại quỹ đạo theo thời gian thực
+│           └── research/                ← app.js, canvas.js, simulator.js, reverse.js (trang nghiên cứu)
 └── ProjectileSimulator.Tests/           ← xUnit
 ```
 
@@ -133,15 +139,29 @@ Mỗi bước Δt (mặc định 0.016 s): (1) tính gia tốc → (2) cập nh�
 
 ## 6. Hướng dẫn sử dụng
 
-### Tab Simulator
-- **Slider**: Distance (1–10), Angle (0–180°), Power (1–100), Wind (−20…20), Gravity, lực cản, Δt, Max time, tốc độ phát hoạt ảnh. Ô số cạnh mỗi slider cho phép gõ giá trị chính xác.
-- **Live preview**: kéo slider là đường đạn dự đoán (nét đứt trắng) cập nhật ngay (gọi API, debounce + hủy request cũ).
-- Kéo trực tiếp **mục tiêu B** trên Canvas để đổi khoảng cách. Cuộn chuột = zoom, kéo = di chuyển, double-click = khung nhìn mặc định.
-- Nút: **Simulate** (Enter) tính và vẽ ngay; **Fire** (Space) chạy hoạt ảnh viên đạn; **Pause/Resume** (P); **Reset** đưa mọi thông số về mặc định; **Clear Trajectory** xóa các đường trên Canvas (giữ lịch sử); **Compare** chạy Model A/B/C/D với thông số hiện tại.
-- **Shot result**: góc, power, V0, distance, gió, thời gian bay, độ cao cực đại, Landing X/Y, tầm xa, độ lệch so với mục tiêu, số bước mô phỏng, trạng thái va chạm…
-- **Shot history**: bật/tắt hiển thị từng phát bắn trên Canvas (so sánh nhiều lần bắn), nạp lại thông số (↺), xóa, **Export CSV**. Lịch sử lưu trong localStorage.
+### Màn chơi (trang chính)
 
-### Tab Reverse Engineering
+| Phím | Tác dụng |
+|---|---|
+| `↑` / `↓` | Tăng / giảm góc 1° mỗi lần nhấn (giữ phím để xoay liên tục), giới hạn 0–180° |
+| `←` / `→` | Giữ để di chuyển nhân vật A; mục tiêu B đứng yên, khoảng cách cập nhật liên tục |
+| `Space` | **Giữ** để tích lực (thanh Lực chạy 0 → 100 %), **thả** để chốt lực và bắn |
+| `Enter` | Bắn ngay với lực đang hiển thị (chế độ thử nghiệm) |
+| `R` | Đặt lại vị trí, góc, lực và xoá đường đạn |
+
+- **Thanh Lực** ở dưới màn hình: giữ Space thì tăng; có thể bấm/kéo trên thanh để đặt lực thủ công. Vạch trắng đánh dấu lực của phát trước.
+- **Đồng hồ góc** (trái), **khoảng cách** + thanh kéo khoảng cách 1–10 (kéo thì B di chuyển), **gió**, nút **BẮN** và **Đặt lại** (phải).
+- **Thước đo** nằm trên mặt đất: vạch 0 luôn ở vị trí A, mỗi vạch = 1 đơn vị, đoạn vàng là khoảng A→B.
+- Đường **nét đứt trắng** là quỹ đạo dự đoán với lực hiện tại (bật/tắt trong Cài đặt); đường **nét liền** là đường đạn thật được vẽ dần theo vị trí viên đạn. Khi đường đạn vượt khỏi khung, camera tự thu nhỏ (giữ nguyên tỉ lệ) để thấy toàn bộ.
+- Trong lúc đạn bay không thể bắn tiếp (theo lượt). Thẻ góc trên trái tóm tắt phát vừa bắn: góc, lực, thời gian bay, điểm rơi, độ lệch, số phát trúng.
+- **⚙ Cài đặt**: trọng lực, bật/tắt gió + cường độ + kiểu gió, gió ngẫu nhiên mỗi lượt, bật/tắt lực cản + hệ số, tốc độ di chuyển, thời gian tích đầy lực, tốc độ hoạt ảnh, Δt, hiển thị lưới/quỹ đạo dự đoán/đường đạn cũ. Cài đặt được lưu trong trình duyệt.
+
+Chi tiết xử lý bàn phím: mọi phím game đều `preventDefault` ở cả `keydown` và `keyup` nên trang không cuộn và không nút nào bị "bấm" nhầm; `keydown` lặp lại của Space bị bỏ qua nên một lần giữ chỉ bắn một phát; nếu cửa sổ mất focus (chuyển tab, Alt+Tab) khi đang giữ Space thì lần tích lực đó bị huỷ, không bắn.
+
+### Trang Nghiên cứu công thức – tab Mô phỏng vật lý
+Đầy đủ thông số vật lý (khoảng cách, góc, lực, gió, trọng lực, lực cản, phương pháp tích phân, Δt), các nút Mô phỏng / Bắn / Tạm dừng / Tiếp tục / So sánh / Xoá đường đạn / Đặt lại, bảng kết quả chi tiết, lịch sử bắn với toạ độ (bật/tắt từng phát trên canvas, xuất CSV).
+
+### Trang Nghiên cứu công thức – tab Dò công thức
 1. **Model parameters** – Initial Velocity Multiplier, Gravity Multiplier, Wind Multiplier, Air Resistance Coefficient, Angle Offset, Power Multiplier, Launch Height (+ hằng số nâng cao). Các tham số này áp dụng cho mọi phát bắn (Model D).
 2. **Compare models** – chọn A: Basic, B: + Wind, C: + Air Resistance, D: Custom; mỗi model một màu trên cùng Canvas, kèm bảng so sánh.
 3. **Experimental data** – nhập các phát bắn bạn đo trong game: Distance, Angle, Power, Wind, Observed Landing X, Observed Landing Y, và *(tùy chọn)* thời gian bay. Hỗ trợ Import/Export CSV:

@@ -210,10 +210,10 @@ public sealed class PhysicsEngine : IPhysicsEngine
 
     private static string Describe(SimulationStatus s) => s switch
     {
-        SimulationStatus.HitTarget => "Hit target",
-        SimulationStatus.HitGround => "Missed – hit the ground",
-        SimulationStatus.OutOfBounds => "Out of bounds",
-        SimulationStatus.Timeout => "Timeout – no collision within MaxTime",
+        SimulationStatus.HitTarget => "Trúng mục tiêu",
+        SimulationStatus.HitGround => "Trượt – chạm đất",
+        SimulationStatus.OutOfBounds => "Ra ngoài biên",
+        SimulationStatus.Timeout => "Hết thời gian – không va chạm",
         _ => s.ToString()
     };
 

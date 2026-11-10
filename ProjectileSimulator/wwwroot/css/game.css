@@ -1,0 +1,162 @@
+/* ======================================================================
+   Màn chơi bắn pháo 2D – giao diện game tối giản
+   ====================================================================== */
+:root {
+  --hud-bg: #1b2235;
+  --hud-bg-2: #252e47;
+  --line: #3a4566;
+  --text: #f1f4ff;
+  --muted: #9aa6c7;
+  --gold: #ffd23f;
+  --fire: #ff6b1a;
+  --ok: #4ade80;
+  --bad: #ff5d5d;
+  --hud-h: 132px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #111522; color: var(--text); font: 14px/1.4 var(--font); }
+button, input, select { font: inherit; color: inherit; }
+.hidden { display: none !important; }
+
+.game { height: 100vh; display: flex; flex-direction: column; }
+
+/* ---------------- Màn chơi ---------------- */
+.stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+#gameCanvas { display: block; width: 100%; height: 100%; }
+
+.topbar {
+  position: absolute; inset: 10px 12px auto 12px;
+  display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none;
+}
+.top-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; pointer-events: auto; }
+.chip {
+  background: rgba(20, 28, 48, 0.75); border: 1px solid rgba(255, 255, 255, 0.25); color: #fff;
+  padding: 6px 12px; border-radius: 999px; cursor: pointer; text-decoration: none; font-weight: 600; font-size: 13px;
+}
+.chip:hover { background: rgba(40, 52, 85, 0.9); }
+.chip.wide { width: 100%; margin-top: 14px; padding: 9px; }
+.api-dot { width: 10px; height: 10px; border-radius: 50%; background: #f5b400; box-shadow: 0 0 0 2px rgba(0,0,0,0.25); }
+.api-dot.ok { background: var(--ok); }
+.api-dot.err { background: var(--bad); }
+
+.shot-card {
+  pointer-events: none;
+  background: rgba(20, 28, 48, 0.72); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 12px;
+  padding: 8px 12px; font-size: 13px; line-height: 1.55; min-width: 210px;
+}
+.shot-card .title { font-weight: 800; margin-bottom: 2px; }
+.shot-card .hit { color: var(--ok); }
+.shot-card .miss { color: #ffb4b4; }
+.shot-card b { color: var(--gold); }
+
+.message {
+  position: absolute; left: 50%; top: 74px; transform: translateX(-50%);
+  background: rgba(20, 28, 48, 0.8); padding: 6px 14px; border-radius: 999px; font-weight: 600;
+  opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap;
+}
+.message.show { opacity: 1; }
+
+/* ---------------- HUD ---------------- */
+.hud {
+  flex: 0 0 var(--hud-h);
+  display: grid;
+  grid-template-columns: 120px minmax(280px, 1fr) 190px 190px;
+  grid-template-rows: 1fr auto;
+  gap: 4px 18px;
+  padding: 8px 18px 6px;
+  background: linear-gradient(180deg, #273152, var(--hud-bg));
+  border-top: 3px solid #4a5684;
+  user-select: none;
+}
+
+.dial { grid-row: 1; position: relative; display: flex; align-items: center; justify-content: center; }
+.dial svg { width: 96px; height: 96px; }
+.dial-face { fill: #10162a; stroke: #4a5684; stroke-width: 3; }
+.dial-arc { fill: none; stroke: rgba(255,210,63,0.35); stroke-width: 3; }
+.dial-ticks line { stroke: #6f7ba3; stroke-width: 1.5; }
+.dial-needle { stroke: var(--gold); stroke-width: 4; stroke-linecap: round; transition: transform .06s linear; }
+.dial-hub { fill: var(--gold); }
+.dial-value {
+  position: absolute; bottom: 14px; left: 0; right: 0; text-align: center;
+  font-size: 20px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000;
+}
+.dial-label { position: absolute; top: 18px; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 800; color: var(--muted); letter-spacing: .15em; }
+
+.power { grid-row: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
+.power-head { display: flex; align-items: baseline; gap: 12px; }
+.power-title { font-weight: 900; letter-spacing: .15em; color: var(--gold); }
+.power-hint { color: var(--muted); font-size: 12px; flex: 1; }
+.power-value { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.power-track {
+  position: relative; height: 30px; border-radius: 15px; cursor: pointer; touch-action: none;
+  background: #0d1222; border: 2px solid #4a5684; overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+}
+.power-fill {
+  position: absolute; inset: 0 auto 0 0; width: 0%;
+  background: linear-gradient(90deg, #2ecc71 0%, #f1c40f 55%, #ff6b1a 80%, #ff2d2d 100%);
+  background-size: calc(100% * 100 / var(--pct, 100)) 100%;
+  box-shadow: 0 0 12px rgba(255, 180, 60, 0.6);
+}
+.power-track.charging .power-fill { animation: shimmer .5s linear infinite; }
+@keyframes shimmer { 50% { filter: brightness(1.25); } }
+.power-ticks {
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), rgba(255,255,255,0.35) calc(10% - 2px) 10%);
+}
+.power-last { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; background: #fff; box-shadow: 0 0 6px #fff; }
+.power-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding: 0 2px; font-variant-numeric: tabular-nums; }
+
+.info { grid-row: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.info-row { display: flex; justify-content: space-between; align-items: baseline; }
+.info-label { color: var(--muted); }
+.info-row b { font-size: 20px; color: var(--gold); font-variant-numeric: tabular-nums; }
+#distanceSlider { width: 100%; accent-color: var(--gold); }
+
+.actions { grid-row: 1; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.btn-fire {
+  height: 52px; border-radius: 14px; border: none; cursor: pointer;
+  background: linear-gradient(180deg, #ff8a3d, #e5520a); color: #fff; font-size: 22px; font-weight: 900; letter-spacing: .1em;
+  box-shadow: 0 4px 0 #9c3605, 0 6px 14px rgba(0,0,0,0.4);
+}
+.btn-fire:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #9c3605; }
+.btn-fire:disabled { filter: grayscale(0.7) brightness(0.7); cursor: not-allowed; }
+.btn-reset {
+  height: 32px; border-radius: 10px; border: 1px solid var(--line); background: var(--hud-bg-2); cursor: pointer; font-weight: 700;
+}
+.btn-reset:hover { border-color: #6f7ba3; }
+
+.keys { grid-column: 1 / -1; grid-row: 2; display: flex; gap: 22px; justify-content: center; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+kbd {
+  display: inline-block; min-width: 20px; padding: 0 5px; margin-right: 3px; text-align: center;
+  border: 1px solid #56618a; border-bottom-width: 2px; border-radius: 4px; background: #2b3453; color: #fff; font: 600 11px/18px var(--font);
+}
+
+/* ---------------- Cài đặt ---------------- */
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 92vw);
+  background: #1b2235; border-left: 1px solid var(--line); padding: 14px 18px 24px; overflow-y: auto;
+  transform: translateX(105%); transition: transform .2s ease; z-index: 10; box-shadow: -10px 0 30px rgba(0,0,0,0.4);
+}
+.drawer.open { transform: none; }
+.drawer-head { display: flex; justify-content: space-between; align-items: center; }
+.drawer h2 { margin: 0; font-size: 18px; }
+.drawer h3 { margin: 18px 0 6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+.field { display: block; margin: 8px 0; }
+.field span { display: block; color: var(--muted); margin-bottom: 2px; }
+.field b { color: #fff; font-variant-numeric: tabular-nums; }
+.field input[type=range] { width: 100%; accent-color: var(--gold); }
+.field select { width: 100%; background: var(--hud-bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
+.check { display: flex; gap: 8px; align-items: center; margin: 8px 0; cursor: pointer; }
+.check input { accent-color: var(--gold); width: 16px; height: 16px; }
+.note { color: var(--muted); font-size: 12px; margin-top: 14px; }
+
+@media (max-width: 1000px) {
+  :root { --hud-h: 200px; }
+  .hud { grid-template-columns: 110px 1fr; grid-template-rows: auto auto auto; }
+  .info { grid-row: 2; grid-column: 1; }
+  .actions { grid-row: 2; grid-column: 2; flex-direction: row; }
+  .actions button { flex: 1; }
+  .keys { grid-row: 3; gap: 10px; }
+}

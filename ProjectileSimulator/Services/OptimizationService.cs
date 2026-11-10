@@ -75,14 +75,14 @@ public sealed class OptimizationService
 
         // If the user turned drag off but wants to fit its coefficient, the parameter has no effect.
         if (specs.Any(s => s.Name == TunableParameter.DragCoefficient) && baseReq.DragType == Physics.DragType.None)
-            notes.Add("DragCoefficient is being optimised but DragType = None, so it has no effect.");
+            notes.Add("Đang tối ưu hệ số cản nhưng lực cản đang TẮT (DragType = None), nên tham số này không có tác dụng.");
         if (specs.Any(s => s.Name == TunableParameter.VelocityMultiplier) && specs.Any(s => s.Name == TunableParameter.PowerMultiplier))
-            notes.Add("VelocityMultiplier and PowerMultiplier are (almost) collinear — only their combined effect can be identified.");
+            notes.Add("Hệ số vận tốc và hệ số lực gần như tương đương — chỉ xác định được tích của chúng.");
         if (specs.Any(s => s.Name == TunableParameter.VelocityMultiplier) && specs.Any(s => s.Name == TunableParameter.GravityMultiplier)
             && experiments.All(e => e.ObservedFlightTime is null))
-            notes.Add("Velocity and Gravity multipliers are fitted from landing points only: landing X mostly depends on V0²/g, so the pair is weakly identifiable. Enter observed flight times to separate them.");
+            notes.Add("Hệ số vận tốc và trọng lực chỉ được fit từ điểm rơi: X rơi chủ yếu phụ thuộc V0²/g nên khó tách riêng hai tham số. Hãy nhập thêm thời gian bay để tách chúng.");
         if (experiments.Count * 2 < n)
-            notes.Add($"Only {experiments.Count} experiments for {n} parameters — the problem is under-determined; add more shots.");
+            notes.Add($"Chỉ có {experiments.Count} thí nghiệm cho {n} tham số — bài toán thiếu dữ liệu; hãy thêm phát bắn.");
 
         var initial = specs.Select(s => Math.Clamp(Get(baseReq, s.Name), s.Min, s.Max)).ToArray();
         var initialParams = specs.ToDictionary(s => s.Name.ToString(), s => Get(baseReq, s.Name));
@@ -161,7 +161,7 @@ public sealed class OptimizationService
             for (var i = 0; i < n; i++)
                 if (steps[i] > 1) steps[i] = Math.Max(2, (int)Math.Floor(steps[i] * factor));
             total = steps.Aggregate(1.0, (a, b) => a * b);
-            notes.Add($"Grid reduced to {string.Join("×", steps)} = {total:N0} points to respect MaxGridEvaluations.");
+            notes.Add($"Lưới được thu nhỏ còn {string.Join("×", steps)} = {total:N0} điểm để không vượt quá số điểm lưới tối đa.");
         }
 
         var count = (long)total;

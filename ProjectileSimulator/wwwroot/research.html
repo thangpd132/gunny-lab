@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nghiên cứu công thức – Gunny Research Lab</title>
+  <link rel="stylesheet" href="css/research.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">◎</span>
+    <div>
+      <div class="brand-title">NGHIÊN CỨU CÔNG THỨC</div>
+      <div class="brand-sub">Phòng thí nghiệm đường đạn · <a href="/" class="back-link">← Về màn chơi</a></div>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="sim" role="tab">Mô phỏng vật lý</button>
+    <button class="tab" data-tab="re" role="tab">Dò công thức</button>
+  </nav>
+  <div class="api-status" id="apiStatus" title="Trạng thái máy chủ"><span class="dot"></span><span class="txt">đang kết nối…</span></div>
+</header>
+
+<main class="layout">
+  <!-- ===================== STAGE (canvas + results) ===================== -->
+  <section class="stage">
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="simCanvas" aria-label="Simulation canvas"></canvas>
+      <div class="canvas-toolbar">
+        <button class="mini" id="btnFitView" title="Thu phóng vừa mọi thứ">Vừa khung</button>
+        <button class="mini" id="btnResetView" title="Khung nhìn mặc định (nhấp đúp canvas)">Khung mặc định</button>
+        <label class="mini-check"><input type="checkbox" id="chkGrid" checked> Lưới</label>
+        <label class="mini-check"><input type="checkbox" id="chkLabels" checked> Nhãn</label>
+        <label class="mini-check"><input type="checkbox" id="chkAim" checked> Đường ngắm</label>
+      </div>
+      <div class="canvas-hud" id="hud"></div>
+      <div class="canvas-legend" id="legend"></div>
+      <div class="canvas-help">Cuộn = thu phóng · kéo = di chuyển · kéo mục tiêu B = đổi khoảng cách</div>
+    </div>
+
+    <div class="bottom">
+      <!-- Results of the last committed shot -->
+      <div class="card" id="resultsCard">
+        <div class="card-head">
+          <h3>Kết quả phát bắn</h3>
+          <span class="badge" id="statusBadge">—</span>
+        </div>
+        <div class="stats" id="stats"></div>
+        <div class="models-line" id="modelsLine"></div>
+      </div>
+
+      <!-- Compare table -->
+      <div class="card hidden" id="compareCard">
+        <div class="card-head">
+          <h3>So sánh</h3>
+          <button class="mini" id="btnCloseCompare">Ẩn</button>
+        </div>
+        <div class="table-scroll">
+          <table class="data" id="compareTable"></table>
+        </div>
+      </div>
+
+      <!-- RE evaluation -->
+      <div class="card hidden" id="evalCard">
+        <div class="card-head">
+          <h3>Dự đoán và thực tế</h3>
+          <div class="metrics" id="evalMetrics"></div>
+        </div>
+        <div class="table-scroll">
+          <table class="data" id="evalTable"></table>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="card">
+        <div class="card-head">
+          <h3>Lịch sử bắn <span class="muted" id="historyCount"></span></h3>
+          <div class="btn-row">
+            <button class="mini" id="btnHistoryShowAll">Hiện tất cả</button>
+            <button class="mini" id="btnHistoryHideAll">Ẩn tất cả</button>
+            <button class="mini" id="btnExportCsv">Xuất CSV</button>
+            <button class="mini danger" id="btnClearHistory">Xoá lịch sử</button>
+          </div>
+        </div>
+        <div class="table-scroll history-scroll">
+          <table class="data" id="historyTable"></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SIDE PANEL ===================== -->
+  <aside class="panel">
+    <!-- ---------- Simulator tab ---------- -->
+    <div class="tab-page" id="page-sim">
+      <section class="group">
+        <h4>Phát bắn</h4>
+        <div class="slider" data-key="distance" data-min="1" data-max="10" data-step="0.1" data-unit="u" data-label="Khoảng cách"></div>
+        <div class="slider" data-key="angle" data-min="0" data-max="180" data-step="1" data-unit="°" data-label="Góc"></div>
+        <div class="slider" data-key="power" data-min="1" data-max="100" data-step="1" data-unit="" data-label="Lực"></div>
+        <div class="slider" data-key="wind" data-min="-20" data-max="20" data-step="0.5" data-unit="" data-label="Gió" data-hint="− ← trái · phải → +"></div>
+      </section>
+
+      <section class="group">
+        <h4>Vật lý</h4>
+        <div class="slider" data-key="gravity" data-min="0" data-max="30" data-step="0.01" data-unit="u/s²" data-label="Trọng lực"></div>
+
+        <div class="row">
+          <label class="check"><input type="checkbox" id="windEnabled"> Bật gió</label>
+          <select id="windMode" title="Mô hình gió">
+            <option value="WindAcceleration">Gió dạng gia tốc (lực)</option>
+            <option value="ConstantWind">Gió đều (khối khí trôi)</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label class="check"><input type="checkbox" id="dragEnabled"> Lực cản không khí</label>
+          <select id="dragType" title="Định luật lực cản">
+            <option value="Quadratic">Bình phương: F = −½·ρ·Cd·A·|v|·v</option>
+            <option value="Linear">Tuyến tính: F = −b·v</option>
+          </select>
+        </div>
+        <div class="slider" data-key="dragCoefficient" data-min="0" data-max="2" data-step="0.01" data-unit="" data-label="Hệ số cản (Cd / b)"></div>
+        <details class="adv">
+          <summary>Chi tiết lực cản (ρ, A, m)</summary>
+          <div class="slider" data-key="airDensity" data-min="0" data-max="5" data-step="0.005" data-unit="" data-label="Mật độ khí ρ"></div>
+          <div class="slider" data-key="crossSectionArea" data-min="0" data-max="0.5" data-step="0.005" data-unit="u²" data-label="Tiết diện A"></div>
+          <div class="slider" data-key="mass" data-min="0.05" data-max="10" data-step="0.05" data-unit="" data-label="Khối lượng m"></div>
+        </details>
+      </section>
+
+      <section class="group">
+        <h4>Mô phỏng</h4>
+        <div class="row">
+          <label for="integrator">Phương pháp tích phân</label>
+          <select id="integrator">
+            <option value="SemiImplicitEuler">Euler bán ẩn</option>
+            <option value="RungeKutta4">Runge–Kutta 4</option>
+            <option value="ExplicitEuler">Euler hiện</option>
+          </select>
+        </div>
+        <div class="slider" data-key="deltaTime" data-min="0.001" data-max="0.05" data-step="0.001" data-unit="s" data-label="Δt (bước thời gian)"></div>
+        <div class="slider" data-key="maxTime" data-min="1" data-max="60" data-step="1" data-unit="s" data-label="Thời gian tối đa"></div>
+        <div class="slider" data-key="playbackSpeed" data-min="0.1" data-max="3" data-step="0.05" data-unit="×" data-label="Tốc độ phát lại" data-local="1"></div>
+        <label class="check"><input type="checkbox" id="livePreview" checked> Xem trước khi kéo thanh trượt</label>
+      </section>
+
+      <section class="group buttons">
+        <button class="btn primary" id="btnSimulate">Mô phỏng</button>
+        <button class="btn fire" id="btnFire">Bắn</button>
+        <button class="btn" id="btnPause" disabled>Tạm dừng</button>
+        <button class="btn" id="btnResume" disabled>Tiếp tục</button>
+        <button class="btn" id="btnCompare" title="Chạy mô hình A–D với thông số hiện tại">So sánh</button>
+        <button class="btn" id="btnClear">Xoá đường đạn</button>
+        <button class="btn danger" id="btnReset">Đặt lại</button>
+      </section>
+      <p class="note">Đơn vị: <b>u</b> = một bước khoảng cách. Nòng súng hiển thị góc <i>hiệu dụng</i> (Góc + Độ lệch góc). Mọi phát bắn dùng các tham số hiệu chỉnh ở tab Dò công thức (Mô hình D).</p>
+    </div>
+
+    <!-- ---------- Reverse engineering tab ---------- -->
+    <div class="tab-page hidden" id="page-re">
+      <section class="group">
+        <h4>Tham số mô hình <span class="muted">(Mô hình D – dùng cho mọi phát bắn)</span></h4>
+        <div class="formula">V0 = k · VelMul · (Power · PowMul)<sup>exp</sup> · g<sub>eff</sub> = g · GravMul · θ = Angle + Offset</div>
+        <div class="slider" data-key="cal.velocityMultiplier" data-min="0.1" data-max="3" data-step="0.001" data-label="Hệ số vận tốc ban đầu"></div>
+        <div class="slider" data-key="cal.gravityMultiplier" data-min="0" data-max="3" data-step="0.001" data-label="Hệ số trọng lực"></div>
+        <div class="slider" data-key="cal.windMultiplier" data-min="-3" data-max="5" data-step="0.01" data-label="Hệ số gió"></div>
+        <div class="slider" data-key="dragCoefficient" data-min="0" data-max="2" data-step="0.01" data-label="Hệ số lực cản" data-mirror="1"></div>
+        <div class="slider" data-key="cal.angleOffset" data-min="-15" data-max="15" data-step="0.1" data-unit="°" data-label="Độ lệch góc"></div>
+        <div class="slider" data-key="cal.powerMultiplier" data-min="0.1" data-max="3" data-step="0.001" data-label="Hệ số lực"></div>
+        <div class="slider" data-key="cal.launchHeight" data-min="0" data-max="3" data-step="0.01" data-unit="u" data-label="Độ cao bắn"></div>
+        <details class="adv">
+          <summary>Hằng số công thức nâng cao</summary>
+          <div class="slider" data-key="cal.powerExponent" data-min="0.3" data-max="2" data-step="0.01" data-label="Số mũ lực"></div>
+          <div class="slider" data-key="cal.powerToVelocity" data-min="0.01" data-max="0.5" data-step="0.001" data-unit="u/s" data-label="k: lực → vận tốc"></div>
+          <div class="slider" data-key="cal.windAccelerationScale" data-min="0" data-max="0.5" data-step="0.001" data-label="Gió → gia tốc"></div>
+          <div class="slider" data-key="cal.windDriftScale" data-min="0" data-max="0.3" data-step="0.001" data-label="Gió → vận tốc trôi"></div>
+          <div class="slider" data-key="barrelLength" data-min="0" data-max="1" data-step="0.01" data-unit="u" data-label="Chiều dài nòng"></div>
+          <div class="slider" data-key="targetWidth" data-min="0.05" data-max="2" data-step="0.01" data-unit="u" data-label="Bề rộng mục tiêu"></div>
+          <div class="slider" data-key="targetHeight" data-min="0.05" data-max="2" data-step="0.01" data-unit="u" data-label="Chiều cao mục tiêu"></div>
+        </details>
+      </section>
+
+      <section class="group">
+        <h4>So sánh mô hình</h4>
+        <div class="model-checks" id="modelChecks">
+          <label><input type="checkbox" value="Basic" checked><span class="sw" style="--c:#4fc3f7"></span>A: Ném xiên cơ bản</label>
+          <label><input type="checkbox" value="Wind" checked><span class="sw" style="--c:#81c784"></span>B: Ném xiên + Gió</label>
+          <label><input type="checkbox" value="Drag" checked><span class="sw" style="--c:#ffb74d"></span>C: Ném xiên + Lực cản</label>
+          <label><input type="checkbox" value="Custom" checked><span class="sw" style="--c:#f06292"></span>D: Mô hình tuỳ chỉnh</label>
+        </div>
+        <button class="btn" id="btnCompareModels">So sánh các mô hình đã chọn</button>
+      </section>
+
+      <section class="group">
+        <h4>Dữ liệu thực nghiệm <span class="muted" id="expCount"></span></h4>
+        <p class="note warn">Nhập các phát bắn bạn tự đo trong game. Toạ độ tính bằng <b>u</b>, X đo từ người bắn. Thời gian bay là tuỳ chọn nhưng giúp tách được vận tốc và trọng lực.</p>
+        <div class="table-scroll exp-scroll">
+          <table class="data editable" id="expTable"></table>
+        </div>
+        <div class="btn-row">
+          <button class="mini" id="btnExpAdd">+ Dòng</button>
+          <button class="mini" id="btnExpAddCurrent" title="Thêm dòng với khoảng cách/góc/lực/gió hiện tại">+ Từ phát bắn hiện tại</button>
+          <button class="mini" id="btnExpImport">Nhập CSV</button>
+          <button class="mini" id="btnExpExport">Xuất CSV</button>
+          <button class="mini" id="btnExpSynthetic" title="Chỉ dùng để kiểm tra bộ tối ưu">Dữ liệu thử tổng hợp…</button>
+          <button class="mini danger" id="btnExpClear">Xoá</button>
+          <input type="file" id="expFile" accept=".csv,text/csv,text/plain" hidden>
+        </div>
+        <div class="row">
+          <label for="timeWeight" title="Quy đổi sai số thời gian bay (s) sang đơn vị khoảng cách trong hàm mục tiêu">Trọng số thời gian bay (u/s)</label>
+          <input type="number" id="timeWeight" value="5" min="0" step="0.5">
+        </div>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="showObservations" checked> Hiện điểm quan sát trên canvas</label>
+        </div>
+        <button class="btn primary" id="btnEvaluate">Tính sai số</button>
+      </section>
+
+      <section class="group">
+        <h4>Tối ưu tham số</h4>
+        <div class="row">
+          <label for="optMethod">Phương pháp</label>
+          <select id="optMethod">
+            <option value="GridThenLeastSquares">Grid search → Bình phương tối thiểu (LM)</option>
+            <option value="GridSearch">Chỉ Grid search</option>
+            <option value="LeastSquares">Bình phương tối thiểu (Levenberg–Marquardt)</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="optIter">Số vòng LM tối đa</label>
+          <input type="number" id="optIter" value="100" min="1" max="1000">
+        </div>
+        <div class="row">
+          <label for="optGrid">Số điểm lưới tối đa</label>
+          <input type="number" id="optGrid" value="20000" min="1" max="200000" step="1000">
+        </div>
+        <div class="table-scroll">
+          <table class="data editable" id="paramTable"></table>
+        </div>
+        <button class="btn primary" id="btnOptimize">Tối ưu tham số</button>
+        <div class="opt-result" id="optResult"></div>
+      </section>
+    </div>
+  </aside>
+</main>
+
+<!-- Import / synthetic dialogs -->
+<dialog id="importDialog">
+  <form method="dialog" class="dlg">
+    <h3>Nhập dữ liệu thực nghiệm (CSV)</h3>
+    <p class="note">Dòng tiêu đề (thứ tự bất kỳ, không phân biệt hoa thường): <code>label,distance,angle,power,wind,observedLandingX,observedLandingY,observedFlightTime</code>. Phân cách: dấu phẩy, chấm phẩy hoặc tab.</p>
+    <textarea id="importText" rows="10" placeholder="distance,angle,power,wind,observedLandingX,observedLandingY&#10;5,45,50,0,5.2,0"></textarea>
+    <div class="btn-row">
+      <button class="btn" type="button" id="btnImportFile">Chọn tệp…</button>
+      <label class="check"><input type="checkbox" id="importReplace"> Thay thế các dòng hiện có</label>
+      <span class="spacer"></span>
+      <button class="btn" value="cancel">Huỷ</button>
+      <button class="btn primary" value="ok" id="btnImportOk">Nhập</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="synthDialog">
+  <form method="dialog" class="dlg">
+    <h3>Sinh dữ liệu thử TỔNG HỢP</h3>
+    <p class="note warn">Các dòng này do <b>chính trình mô phỏng</b> tạo ra với tham số hiện tại (có thể thêm nhiễu). Đây <b>không phải</b> dữ liệu Gunny — chỉ dùng để kiểm tra bộ tối ưu có tìm lại được tham số đã biết (ví dụ: sinh dữ liệu, đổi một hệ số, rồi bấm Tối ưu).</p>
+    <div class="row"><label>Số phát bắn</label><input type="number" id="synthCount" value="8" min="1" max="50"></div>
+    <div class="row"><label>Nhiễu σ (u)</label><input type="number" id="synthNoise" value="0" min="0" step="0.01"></div>
+    <div class="row"><label class="check"><input type="checkbox" id="synthTime" checked> Kèm thời gian bay</label></div>
+    <div class="btn-row">
+      <span class="spacer"></span>
+      <button class="btn" value="cancel">Huỷ</button>
+      <button class="btn primary" value="ok">Sinh dữ liệu</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/research/app.js"></script>
+</body>
+</html>

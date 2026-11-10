@@ -421,7 +421,7 @@ export class SimCanvas {
     ctx.stroke();
     arrowHead(ctx, x1, ry, 0, 7);
     arrowHead(ctx, x0, ry, Math.PI, 7);
-    const label = `distance = ${s.distance.toFixed(1)} u`;
+    const label = `khoảng cách = ${s.distance.toFixed(1)} u`;
     ctx.font = '600 11px ui-monospace, monospace';
     const tw = ctx.measureText(label).width + 10;
     const mx = (x0 + x1) / 2;
@@ -516,7 +516,7 @@ export class SimCanvas {
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(mx, my, 3.5, 0, TAU); ctx.stroke();
 
-    if (this.options.labels) label(ctx, 'A · shooter', gx, gy - bodyH - 10, '#39d0ff');
+    if (this.options.labels) label(ctx, 'A · người bắn', gx, gy - bodyH - 10, '#39d0ff');
   }
 
   _drawTarget(ctx) {
@@ -552,7 +552,7 @@ export class SimCanvas {
     ctx.strokeStyle = 'rgba(255,255,255,0.4)';
     ctx.beginPath(); ctx.moveTo(cx, gy); ctx.lineTo(cx, gy - h); ctx.stroke();
 
-    if (this.options.labels) label(ctx, 'B · target', cx, gy - h - hr * 2 - 8, '#ff8a8a');
+    if (this.options.labels) label(ctx, 'B · mục tiêu', cx, gy - h - hr * 2 - 8, '#ff8a8a');
   }
 
   _drawTrajectory(ctx, t) {
@@ -602,7 +602,7 @@ export class SimCanvas {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.fillStyle = t.color;
-        const txt = (t.preview ? 'preview ' : '') + `x=${r.landingX.toFixed(2)}`;
+        const txt = (t.preview ? 'xem trước ' : '') + `x=${r.landingX.toFixed(2)}`;
         ctx.fillText(txt, ix, iy + (t.preview ? 18 : 8));
       }
     }
@@ -653,8 +653,8 @@ export class SimCanvas {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#7d8ba3';
-    ctx.fillText('WIND', cx - boxW / 2 + 8, cy - 6);
-    ctx.fillText(s.windMode === 'ConstantWind' ? 'drift' : 'accel', cx - boxW / 2 + 8, cy + 8);
+    ctx.fillText('GIÓ', cx - boxW / 2 + 8, cy - 6);
+    ctx.fillText(s.windMode === 'ConstantWind' ? 'trôi' : 'gia tốc', cx - boxW / 2 + 8, cy + 8);
 
     const active = s.windEnabled && s.wind !== 0;
     const maxLen = 70;
@@ -675,7 +675,7 @@ export class SimCanvas {
     ctx.font = '600 12px ui-monospace, monospace';
     ctx.textAlign = 'right';
     ctx.fillStyle = s.windEnabled ? '#dbe6f5' : '#7d8ba3';
-    ctx.fillText(s.windEnabled ? (s.wind > 0 ? '+' : '') + s.wind.toFixed(1) : 'OFF', cx + boxW / 2 - 8, cy + 2);
+    ctx.fillText(s.windEnabled ? (s.wind > 0 ? '+' : '') + s.wind.toFixed(1) : 'TẮT', cx + boxW / 2 - 8, cy + 2);
   }
 
   _drawScaleBar(ctx) {

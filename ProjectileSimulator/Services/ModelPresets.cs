@@ -33,10 +33,10 @@ public static class ModelPresets
 
     public static string Label(ModelPreset p) => p switch
     {
-        ModelPreset.Basic => "A: Basic Projectile",
-        ModelPreset.Wind => "B: Projectile + Wind",
-        ModelPreset.Drag => "C: Projectile + Air Resistance",
-        ModelPreset.Custom => "D: Custom Model",
+        ModelPreset.Basic => "A: Ném xiên cơ bản",
+        ModelPreset.Wind => "B: Ném xiên + Gió",
+        ModelPreset.Drag => "C: Ném xiên + Lực cản",
+        ModelPreset.Custom => "D: Mô hình tuỳ chỉnh",
         _ => p.ToString()
     };
 }
